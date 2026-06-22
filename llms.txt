@@ -1,0 +1,36 @@
+# Caliber.Webhooks
+
+> Reliable, Standard-Webhooks-compliant webhook *delivery* for .NET — embedded in your own ASP.NET app, with zero infrastructure by default. It provides durable enqueue, retries with backoff, HMAC-SHA256 signing, dead-lettering with replay, SSRF defence, and cross-instance work-claiming, backed by your own database. Not a separate server you run alongside your app, and not an internal message bus or event-streaming platform — it is the external HTTP "last mile" for delivering to third-party endpoints.
+
+Status: pre-release / in active development. The design is complete and v1 is being built milestone by milestone; the library is not yet published to NuGet, and the API described in the docs is the target surface (subject to change). Documentation is Markdown (Open Knowledge Format) with YAML frontmatter; the `docs/` bundle is the canonical, living documentation, while the portfolio-root design docs remain frozen as decision provenance.
+
+## Start here
+
+- [Documentation index](docs/README.md): Map of the whole bundle and what to read first.
+- [Overview](docs/overview.md): The problem, the .NET niche, and positioning as an embeddable library rather than a standalone service.
+- [Getting started](docs/getting-started.md): Install and deliver a first webhook with zero infrastructure; scale by swapping one line.
+
+## Concepts
+
+- [Delivery semantics & reliability](docs/concepts/delivery-semantics.md): Durable never-inline enqueue, at-least-once with a stable webhook-id, retry/backoff, dead-letter, and replay.
+- [Architecture (iDesign decomposition)](docs/concepts/architecture.md): Volatility-based layers (Clients, Managers, Engines, ResourceAccess, Resources) and the enforced downward call rules.
+- [Storage & work-claiming](docs/concepts/storage-and-work-claiming.md): Store lineup, guarantee tiers, per-provider claim mechanisms, and the lease/crash-recovery invariant.
+- [Transactional outbox](docs/concepts/transactional-outbox.md): The single PublishAsync enqueue API, the ambient-DbContext outbox, and the idempotent relay/fan-out.
+- [Endpoints, subscriptions & matching](docs/concepts/endpoints-and-matching.md): The subscription model, exact + subscribe-all matching, tenant scoping, and idempotent fan-out.
+- [Security](docs/concepts/security.md): Standard Webhooks signing, the non-bypassable SSRF guard, secret-at-rest, and hardening.
+- [Configuration & defaults](docs/concepts/configuration.md): The AddCaliberWebhooks options surface, locked defaults, the default retry schedule, and fail-fast validation.
+- [Observability](docs/concepts/observability.md): OpenTelemetry traces, metrics, and logs via BCL ActivitySource/Meter (no SDK dependency).
+
+## Design
+
+- [Design decisions](docs/design/decisions.md): ADR-style log of the v1 decisions (#0–#6) and toolchain/identity choices — the "why."
+- [Core use cases](docs/design/use-cases.md): The six core use cases (publish, relay/fan-out, deliver, reclaim, manage endpoint, verify).
+- [Roadmap](docs/design/roadmap.md): v1 milestones M0–M5 and the additive v1.1+ roadmap.
+
+## Reference
+
+- [Public API (target surface)](docs/reference/public-api.md): Provisional, pre-release public API — registration, publisher, endpoints, options, signing/verification, recovery.
+
+## Optional
+
+- [Project README](README.md): The repository landing page and pre-release status.

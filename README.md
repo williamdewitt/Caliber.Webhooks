@@ -14,16 +14,16 @@
 
 Every platform eventually needs to notify *external* systems when something happens — `payment.succeeded`, `order.shipped`. The naïve version is one line — `httpClient.PostAsync(url, json)` — and it's a trap: the receiver is an untrusted server you don't control that can be down, slow, or malicious. Doing it *reliably* — durable delivery, retries with backoff, signing, idempotency, dead-lettering, SSRF protection — is a genuine distributed-systems problem.
 
-In .NET specifically there's a gap. The serious webhook infrastructure (Svix, Convoy, Hookdeck Outpost) are standalone **Rust/Go servers** you run as separate services. The .NET NuGet options are simplistic "just POST" senders or abandoned. There is no widely-adopted, Standard-Webhooks-compliant, production-grade library you embed in your own ASP.NET app.
+In .NET specifically there's a gap. The serious webhook infrastructure is delivered as standalone **Rust/Go servers** you run as separate services. The .NET NuGet options are simplistic "just POST" senders or abandoned. There is no widely-adopted, Standard-Webhooks-compliant, production-grade library you embed in your own ASP.NET app.
 
-**Caliber.Webhooks fills that gap — Svix-grade reliability as a library, no separate service to run.** *(Honest framing: the incumbents are excellent; this is the embeddable .NET option, not a claim that "nothing exists.")*
+**Caliber.Webhooks fills that gap — production-grade reliability as a library, no separate service to run.** *(Honest framing: the standalone services are excellent; this is the embeddable .NET option, not a claim that "nothing exists.")*
 
 ## What v1 delivers
 
 - **Durable, never-inline delivery.** `PublishAsync` persists the event and returns; a background dispatcher delivers it. A crash mid-send never loses an event.
 - **Transactional outbox.** Configure it with your `DbContext` and the event is staged in the *same* transaction as your business data — atomic enqueue, no dual-write.
 - **At-least-once with a stable `webhook-id`.** Receivers can dedupe; exactly-once over HTTP is impossible and never promised.
-- **Standard Webhooks signing** (HMAC-SHA256) — the same scheme OpenAI, Anthropic, and Stripe-style providers use.
+- **Standard Webhooks signing** (HMAC-SHA256) — the same scheme major API providers use.
 - **Retry with backoff + jitter** on a durable schedule (~24h), then **dead-letter** with programmatic replay.
 - **Non-bypassable SSRF protection** — connect-time IP validation (defeats DNS-rebinding), HTTPS-only, no auto-redirect.
 - **Cross-instance work-claiming** — run multiple dispatchers with no double-send; crash-safe leases.
@@ -66,17 +66,16 @@ await db.SaveChangesAsync();   // one transaction: business data + outbox row
 var result = WebhookVerifier.Verify(request.Headers, rawBody, secret);
 ```
 
-## Where this sits (and how it differs from Kafka)
+## Where this sits
 
-Caliber.Webhooks is **not** a Kafka replacement — it's the layer that does what Kafka deliberately doesn't: the **external last mile** over HTTP. Kafka is your trusted internal backbone (consumers *pull*); Caliber.Webhooks *pushes* to third-party HTTP endpoints on the public internet, owning retries, backoff, signing, and SSRF defence per untrusted destination. They're complementary — Caliber.Webhooks sits *downstream* of your broker, so a pluggable Kafka source is on the roadmap.
+Caliber.Webhooks handles the **external edge** — pushing to third-party HTTP endpoints on the public internet, owning retries, backoff, signing, and SSRF defence per untrusted destination. It is deliberately **source-agnostic**: deliveries can be fed by a direct `PublishAsync` or drained from a transactional outbox (with further source adapters on the roadmap). It is **not** an internal message bus or event-streaming platform — it complements whatever you already run internally.
 
-## Prior art & positioning
+## Positioning
 
-| Tool | Form | How Caliber.Webhooks differs |
+| Existing option | Form | How Caliber.Webhooks differs |
 |---|---|---|
-| **Svix** | Rust server + SaaS (authored Standard Webhooks) | In-process .NET library, no separate service; backed by *your* DB (transactional outbox) |
-| **Convoy / Hookdeck Outpost** | Go servers | Same "run another service" tradeoff; Caliber.Webhooks is a NuGet you embed |
-| **Deveel.Webhooks** | Closest existing .NET library | Caliber.Webhooks is Standard-Webhooks-first, with transactional outbox, SSRF hardening, and a receiver helper |
+| Standalone webhook services | Self-hosted Rust/Go servers (often + SaaS) | In-process .NET library, no separate service; backed by *your* DB (transactional outbox) |
+| Existing .NET libraries | Simplistic "just POST" senders, or unmaintained | Standard-Webhooks-first, with transactional outbox, SSRF hardening, and a receiver helper |
 
 ## Roadmap
 
@@ -91,7 +90,7 @@ Caliber.Webhooks is **not** a Kafka replacement — it's the layer that does wha
 | **M4** | Recovery (replay) + OpenTelemetry |
 | **M5** | Docs, samples, ship v1 |
 
-**v1.1+** — SQL Server & Redis stores · Kafka source · admin API + receiver middleware · ed25519 + secret rotation · per-endpoint rate-limiting / circuit-breaking.
+**v1.1+** — SQL Server & Redis stores · additional event sources · admin API + receiver middleware · ed25519 + secret rotation · per-endpoint rate-limiting / circuit-breaking.
 
 ## Tech stack
 

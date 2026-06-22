@@ -45,6 +45,7 @@ The "why" — decision records, the use-case model, and the delivery plan.
 - [Decisions](./design/decisions.md) — ADR-style log of the v1 design decisions (#0–#6) and the toolchain choices.
 - [Use cases](./design/use-cases.md) — the six core use cases (iDesign-first).
 - [Roadmap](./design/roadmap.md) — v1 milestones M0–M5 and the v1.1+ roadmap.
+- [Development loop](./design/development-loop.md) — how the repo builds and supports itself (CI, governance, risk-tiered AI automation). *Maintainer/process design.*
 
 ## Reference
 

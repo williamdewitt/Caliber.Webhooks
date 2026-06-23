@@ -20,7 +20,7 @@ on:
     types: [ opened, synchronize, reopened, ready_for_review ]
 
 permissions:
-  contents: read
+  contents: write # needed to enable native auto-merge on trivial PRs
   pull-requests: write
 
 concurrency:

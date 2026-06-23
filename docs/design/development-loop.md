@@ -81,16 +81,16 @@ The in-CI agent (`claude-code-action`, headless on Actions runners) is **not** t
 1. **M0 shell + `ci.yml`** — foundation; CI must be green before anything can gate on it. ✅ *(done — CI green, project `9752d1f`)*
 2. **`release.yml` + Release Drafter** — tag → MinVer → pack → NuGet (manual-approval `release` environment). ✅ *(done, `ff51da1`; before the first cut, set the `release` environment's required reviewer and add the `NUGET_API_KEY` secret)*
 3. **Backlog as data** — Milestones M0–M5, label taxonomy, roadmap seeded as issues, Project board. ✅ *(milestones + labels + seeded issues done; the Project v2 board still needs the `project` gh scope)*
-4. **Rule system + support automation** — branch protection/rulesets, CODEOWNERS, path-classifier, native auto-merge, Dependabot (first dogfood), CodeQL, dependency-review. ✅ *(all files landed, `ff51da1`; CODEOWNERS, path-classifier, Dependabot, and issue forms are live now — see the public-flip note for the four that aren't)*
+4. **Rule system + support automation** — branch protection/rulesets, CODEOWNERS, path-classifier, native auto-merge, Dependabot (first dogfood), CodeQL, dependency-review. ✅ *(all live — files in `ff51da1`; the four public-gated pieces activated on the flip below)*
 5. **Agent-in-the-loop** — pointed at Tier 1–2 issues, gated by everything above. ⏳ *(next; also needs the API-key vs subscription-auth decision — see "The agent & its economics")*
 
-## The public-flip dependency
+## The public flip — done
 
-Four capabilities require the repository to be **public** (or on a paid plan), confirmed by API: repository **rulesets** (branch protection), **native auto-merge**, **CodeQL** code scanning, and **dependency-review**. All four are wired and inert — the CodeQL/dependency-review workflows guard on `repository.visibility == 'public'` and skip cleanly while private; the exact ruleset is stored at [`.github/rulesets/main.json`](../../.github/rulesets/main.json) ready to apply in one command. Flipping the repo public activates the full gate. (The plan always was to flip public at M0; M0 has shipped.)
+The repository is now **public**. Four capabilities required it (or a paid plan), confirmed by API (`403: Upgrade to GitHub Pro or make this repository public` while private): repository **rulesets** (branch protection — applied from [`.github/rulesets/main.json`](../../.github/rulesets/main.json), active on `main`, owner-bypass, required check `build · test · pack`), **native auto-merge** (`allow_auto_merge` enabled), **CodeQL**, and **dependency-review** (their workflows guard on `repository.visibility == 'public'`). All activated on the flip with no further wiring.
 
 ## Status
 
-Layers 1–3 and the file level of layer 4 are **built and pushed**. Live while private: CI/CD (`ci.yml`, `release.yml`, Release Drafter), the deterministic path-classifier, CODEOWNERS, Dependabot + its patch-auto-merge dogfood, issue forms + triage, and the seeded milestone/label/issue backlog. Pending the public flip: rulesets, native auto-merge, CodeQL, dependency-review. Pending a separate decision: the Project v2 board (`project` scope) and the agent (layer 4 / step 5). This file is the contract those `.github/` workflows are built against, updated as each lands.
+The loop is **fully live**. Layers 1–3 and all of layer 4's automation are built, pushed, and gating: CI/CD (`ci.yml`, `release.yml`, Release Drafter), the deterministic path-classifier + native auto-merge on `risk:trivial`, the active `main` ruleset + CODEOWNERS, Dependabot + its patch-auto-merge dogfood, CodeQL + dependency-review, issue forms + triage, and the seeded milestone/label/issue backlog. Remaining: the Project v2 board (`project` gh scope) and the agent (layer 4 / step 5, pending the auth decision). This file is the contract those `.github/` workflows are built against, updated as each lands.
 
 ## See also
 

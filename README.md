@@ -4,6 +4,7 @@
 
 > **Status: pre-release / in active development.** The design is complete and v1 is being built milestone by milestone (see [Roadmap](#roadmap)). It is **not yet published to NuGet** — watch/star to follow along.
 
+[![CI](https://github.com/williamdewitt/Caliber.Webhooks/actions/workflows/ci.yml/badge.svg)](https://github.com/williamdewitt/Caliber.Webhooks/actions/workflows/ci.yml)
 ![Status: pre-release](https://img.shields.io/badge/status-pre--release-orange)
 ![Target: net8.0 | net10.0](https://img.shields.io/badge/target-net8.0%20%7C%20net10.0-512BD4)
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue)

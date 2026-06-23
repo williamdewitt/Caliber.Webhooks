@@ -1,0 +1,104 @@
+name: Classify & auto-merge
+
+# The deterministic spine. Every PR is classified into exactly one risk:* band by
+# its changed paths (no model, free, reliable). That single label is the source of
+# truth the merge gate reads. If the band is trivial, native auto-merge is enabled
+# so the PR merges itself once CI is green.
+#
+# Precedence (highest blast radius wins): critical > core > low > trivial.
+#   critical = public API surface, EF migrations, or security-sensitive source
+#              (SSRF / signing / secret-at-rest)
+#   core     = anything under src/Caliber.Webhooks/
+#   low      = tests / samples only
+#   trivial  = docs / markdown / .github / editor & repo config only
+#
+# Uses pull_request_target (so it can label PRs from Dependabot and forks) but
+# never checks out PR head code — it only reads the file list and writes labels.
+
+on:
+  pull_request_target:
+    types: [ opened, synchronize, reopened, ready_for_review ]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: classify-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  classify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+            const paths = files.map(f => f.filename);
+
+            const isCritical = paths.some(p =>
+              /(^|\/)PublicAPI\.(Shipped|Unshipped)\.txt$/.test(p) ||
+              /(^|\/)Migrations\//.test(p) ||
+              /(Ssrf|Signing|Signer|Secret)/i.test(p)
+            );
+            const isCore = paths.some(p => p.startsWith('src/Caliber.Webhooks/'));
+            const isLow = paths.some(p => p.startsWith('tests/') || p.startsWith('samples/'));
+            const allTrivial = paths.length > 0 && paths.every(p =>
+              p.startsWith('docs/') ||
+              p.startsWith('.github/') ||
+              p.endsWith('.md') ||
+              p === 'llms.txt' ||
+              /(^|\/)(\.editorconfig|\.gitignore|global\.json)$/.test(p) ||
+              /\.(yml|yaml)$/.test(p)
+            );
+
+            let band;
+            if (isCritical) band = 'critical';
+            else if (isCore) band = 'core';
+            else if (allTrivial) band = 'trivial';
+            else if (isLow) band = 'low';
+            else band = 'low'; // unknown mix → conservative default
+
+            const want = `risk:${band}`;
+            const existing = (pr.labels || []).map(l => l.name).filter(n => n.startsWith('risk:'));
+            for (const name of existing) {
+              if (name !== want) {
+                await github.rest.issues.removeLabel({
+                  ...context.repo, issue_number: pr.number, name,
+                }).catch(() => {});
+              }
+            }
+            await github.rest.issues.addLabels({
+              ...context.repo, issue_number: pr.number, labels: [want],
+            });
+
+            await core.summary
+              .addHeading(`Risk band: ${band}`, 3)
+              .addRaw(`Classified PR #${pr.number} from ${paths.length} changed path(s).`)
+              .write();
+
+            // Trivial PRs earn native auto-merge: merge on green, no human.
+            if (band === 'trivial' && !pr.draft) {
+              try {
+                await github.graphql(
+                  `mutation($id: ID!) {
+                     enablePullRequestAutoMerge(input: { pullRequestId: $id, mergeMethod: SQUASH }) {
+                       clientMutationId
+                     }
+                   }`,
+                  { id: pr.node_id },
+                );
+                core.notice(`Auto-merge enabled for trivial PR #${pr.number}.`);
+              } catch (e) {
+                // Expected until branch protection requires checks (e.g. while the
+                // repo is private on a plan without rulesets). Harmless.
+                core.warning(`Could not enable auto-merge: ${e.message}`);
+              }
+            }

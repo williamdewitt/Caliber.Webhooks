@@ -1,0 +1,51 @@
+# Release Drafter keeps a single draft GitHub Release up to date as PRs merge to
+# main, categorising entries by our type:* / area:* labels and resolving the next
+# version from them. Publishing that draft (which creates the v* tag) is what
+# triggers release.yml. Notes are drafted automatically; the cut stays manual.
+
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+
+categories:
+  - title: '🚀 Features'
+    labels: ['type:feat']
+  - title: '🐛 Fixes'
+    labels: ['type:fix']
+  - title: '🔒 Security'
+    labels: ['area:security']
+  - title: '📝 Docs'
+    labels: ['type:docs']
+  - title: '🧪 Tests'
+    labels: ['type:test']
+  - title: '🧰 Maintenance'
+    labels: ['type:chore', 'type:build', 'type:ci', 'type:refactor', 'type:perf']
+
+change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
+change-title-escapes: '\<*_&'
+
+version-resolver:
+  major:
+    labels: ['breaking']
+  minor:
+    labels: ['type:feat']
+  patch:
+    labels:
+      - 'type:fix'
+      - 'type:chore'
+      - 'type:docs'
+      - 'type:test'
+      - 'type:build'
+      - 'type:ci'
+      - 'type:refactor'
+      - 'type:perf'
+  default: patch
+
+exclude-labels:
+  - 'skip-changelog'
+
+template: |
+  ## What's changed
+
+  $CHANGES
+
+  **Full changelog:** $PREVIOUS_TAG...v$RESOLVED_VERSION

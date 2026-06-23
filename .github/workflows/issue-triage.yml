@@ -1,0 +1,50 @@
+name: Issue triage
+
+# Deterministic, model-free triage: read the Area + Risk band dropdowns from the
+# issue form body and apply the matching area:* / risk:* labels, then clear
+# needs-triage. Free-form issues that don't match keep needs-triage — a (future,
+# step 5) cheap Haiku pass will band those; this workflow never calls a model.
+
+on:
+  issues:
+    types: [ opened, edited ]
+
+permissions:
+  issues: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const body = issue.body || '';
+
+            // GitHub renders each form field as a "### <label>" section.
+            const section = (heading) => {
+              const re = new RegExp('###\\s*' + heading + '\\s*\\n+([\\s\\S]*?)(?=\\n###\\s|\\s*$)', 'i');
+              const m = body.match(re);
+              return m ? m[1].trim() : '';
+            };
+
+            const areas = ['delivery','outbox','storage','security','observability','packaging','ci','docs'];
+            const bands = ['trivial','low','core','critical'];
+
+            const areaVal = section('Area').toLowerCase().split('\n')[0].trim();
+            const riskVal = section('Risk band').toLowerCase();
+
+            const labels = [];
+            if (areas.includes(areaVal)) labels.push('area:' + areaVal);
+            const band = bands.find(b => riskVal.startsWith(b));
+            if (band) labels.push('risk:' + band);
+
+            if (labels.length) {
+              await github.rest.issues.addLabels({
+                ...context.repo, issue_number: issue.number, labels,
+              });
+              await github.rest.issues.removeLabel({
+                ...context.repo, issue_number: issue.number, name: 'needs-triage',
+              }).catch(() => {});
+            }

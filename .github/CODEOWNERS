@@ -1,0 +1,18 @@
+# CODEOWNERS — the human-review half of the risk gate.
+#
+# Only protected paths are listed. Paths NOT listed here deliberately have NO
+# code owner, so trivial/low-risk PRs (docs, CI config, tests, samples) can
+# auto-merge on green with no human in the loop. See docs/design/development-loop.md.
+#
+# A listed path requires its owner's review before merge (when the main ruleset's
+# "require code owner review" is active). On this solo repo the owner can bypass
+# via the ruleset's admin bypass when self-merging.
+
+# risk:core — the library itself. Always human-reviewed.
+/src/Caliber.Webhooks/              @williamdewitt
+
+# risk:critical — public API surface + EF migrations (human review + linked design).
+# (SSRF / signing / secret-at-rest source lives under src/ above, so it is covered.)
+PublicAPI.Shipped.txt               @williamdewitt
+PublicAPI.Unshipped.txt             @williamdewitt
+/src/**/Migrations/                 @williamdewitt

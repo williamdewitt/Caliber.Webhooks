@@ -1,0 +1,46 @@
+name: Bug report
+description: Something doesn't behave as designed.
+title: "fix: "
+labels: ["type:fix", "needs-triage"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened
+      description: Expected vs. actual, with a minimal repro if possible.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - delivery
+        - outbox
+        - storage
+        - security
+        - observability
+        - packaging
+        - ci
+        - docs
+    validations:
+      required: true
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Risk band
+      description: Blast radius of the fix. Drives gate + model + effort.
+      options:
+        - "trivial — docs / formatting / CI; auto-merges on green"
+        - "low — tests / samples"
+        - "core — src/Caliber.Webhooks"
+        - "critical — SSRF / signing / secret-at-rest / public API / migrations"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      description: Package version or commit SHA where you saw this.
+    validations:
+      required: false

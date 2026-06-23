@@ -1,0 +1,60 @@
+name: Feature / task
+description: A unit of work — maps to a roadmap milestone (M0–M5).
+title: "feat: "
+labels: ["type:feat", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The **Area** and **Risk band** you pick below are read deterministically by
+        the triage workflow and turned into `area:*` / `risk:*` labels. The risk band
+        drives the merge gate, the model, and the effort — see
+        [development-loop.md](../blob/main/docs/design/development-loop.md).
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What should change, and why.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - delivery
+        - outbox
+        - storage
+        - security
+        - observability
+        - packaging
+        - ci
+        - docs
+    validations:
+      required: true
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Risk band
+      description: Blast radius. Drives gate + model + effort.
+      options:
+        - "trivial — docs / formatting / CI; auto-merges on green"
+        - "low — tests / samples"
+        - "core — src/Caliber.Webhooks"
+        - "critical — SSRF / signing / secret-at-rest / public API / migrations"
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Bullet list. Required before an issue can be marked `ready`.
+    validations:
+      required: true
+  - type: textarea
+    id: dod
+    attributes:
+      label: Definition of done
+      description: Tests, docs, packaging — what "complete" means for this item.
+    validations:
+      required: false

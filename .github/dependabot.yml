@@ -1,0 +1,27 @@
+version: 2
+
+updates:
+  # NuGet — versions are centralised in Directory.Packages.props (CPM), which
+  # Dependabot understands. Minor/patch are grouped into one PR to cut noise;
+  # patch updates are the first dogfood of the auto-merge path (see
+  # dependabot-auto-merge.yml).
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels: ["type:build", "area:packaging"]
+    groups:
+      nuget-minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  # GitHub Actions used by the workflows in this folder.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels: ["type:ci", "area:ci"]
+    groups:
+      actions-minor-and-patch:
+        update-types: ["minor", "patch"]

@@ -1,0 +1,48 @@
+name: CodeQL
+
+# Static security analysis. Code scanning is free on public repositories (and on
+# private repos only with GitHub Advanced Security), so the job is guarded on
+# visibility: it cleanly skips while the repo is private — no failing runs — and
+# activates automatically when the repo is made public.
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '27 3 * * 1' # weekly, Monday 03:27 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: analyze (csharp)
+    runs-on: ubuntu-latest
+    if: github.event.repository.visibility == 'public'
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET (8 + 10)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: csharp
+          build-mode: autobuild
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:csharp'

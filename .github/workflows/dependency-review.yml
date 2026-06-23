@@ -1,0 +1,28 @@
+name: Dependency review
+
+# Flags vulnerable or newly-introduced risky dependencies on PRs. The dependency
+# review API is available on public repos (and private repos with GitHub Advanced
+# Security), so the job is guarded on visibility — it skips while private and
+# activates when the repo is made public.
+
+on:
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    name: review dependencies
+    runs-on: ubuntu-latest
+    if: github.event.repository.visibility == 'public'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dependency review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure

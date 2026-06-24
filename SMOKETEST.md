@@ -1,1 +1,0 @@
-Agent loop smoke test — safe to delete.

@@ -8,9 +8,11 @@ name: Classify & auto-merge
 # Precedence (highest blast radius wins): critical > core > low > trivial.
 #   critical = public API surface, EF migrations, or security-sensitive source
 #              (SSRF / signing / secret-at-rest)
-#   core     = anything under src/Caliber.Webhooks/
+#   core     = anything under src/Caliber.Webhooks/, OR any .github/workflows/**
+#              change (CI privilege / secret surface — human-gated, never auto-merged)
 #   low      = tests / samples only
-#   trivial  = docs / markdown / .github / editor & repo config only
+#   trivial  = docs / markdown / .github *config* (issue templates, dependabot,
+#              release-drafter) / editor & repo config — but NOT .github/workflows/**
 #
 # Uses pull_request_target (so it can label PRs from Dependabot and forks) but
 # never checks out PR head code — it only reads the file list and writes labels.
@@ -49,10 +51,17 @@ jobs:
               /(Ssrf|Signing|Signer|Secret)/i.test(p)
             );
             const isCore = paths.some(p => p.startsWith('src/Caliber.Webhooks/'));
+            // A workflow definition controls CI privileges and secret access — high
+            // blast radius. It is NOT trivial even though it lives under .github/ and
+            // ends in .yml; treat it as core so it never auto-merges and a human must
+            // merge it (CODEOWNERS also requires the owner's review). Dependabot patch
+            // bumps to workflows still auto-merge via dependabot-auto-merge.yml, which
+            // is actor-gated (trusted bot, patch only), not path-gated.
+            const isWorkflow = paths.some(p => p.startsWith('.github/workflows/'));
             const isLow = paths.some(p => p.startsWith('tests/') || p.startsWith('samples/'));
             const allTrivial = paths.length > 0 && paths.every(p =>
               p.startsWith('docs/') ||
-              p.startsWith('.github/') ||
+              (p.startsWith('.github/') && !p.startsWith('.github/workflows/')) ||
               p.endsWith('.md') ||
               p === 'llms.txt' ||
               /(^|\/)(\.editorconfig|\.gitignore|global\.json)$/.test(p) ||
@@ -61,7 +70,7 @@ jobs:
 
             let band;
             if (isCritical) band = 'critical';
-            else if (isCore) band = 'core';
+            else if (isCore || isWorkflow) band = 'core';
             else if (allTrivial) band = 'trivial';
             else if (isLow) band = 'low';
             else band = 'low'; // unknown mix → conservative default

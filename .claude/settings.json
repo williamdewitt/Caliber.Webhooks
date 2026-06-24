@@ -1,0 +1,14 @@
+{
+  "$comment": "Repo-scoped Claude Code settings. Enables the dotnet-claude-kit plugin so its agents, commands, skills, Roslyn MCP tools, and hooks travel with the repo — for every contributor, clone, and the CI @claude agent (claude.yml). See docs/design/dotnet-claude-kit-adoption.md for the capability->flow mapping and the house overrides that win over the kit's defaults.",
+  "extraKnownMarketplaces": {
+    "dotnet-claude-kit": {
+      "source": {
+        "source": "github",
+        "repo": "codewithmukesh/dotnet-claude-kit"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "dotnet-claude-kit@dotnet-claude-kit": true
+  }
+}

@@ -26,6 +26,9 @@ coverage*.info
 *.userprefs
 *~
 
+# Claude Code — share repo-scoped settings (.claude/settings.json), keep personal/secret overrides local
+.claude/settings.local.json
+
 # OS
 .DS_Store
 Thumbs.db

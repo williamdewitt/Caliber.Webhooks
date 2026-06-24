@@ -106,11 +106,44 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           # Risk-routed model + a turn cap so a runaway task can't burn the budget.
-          # The append-system-prompt makes the loop hands-off: the agent opens the
-          # PR itself (under the Claude App identity, which *does* trigger classify
-          # → gate → auto-merge), instead of only pushing a branch and leaving a
-          # "Create PR" link for a human to click.
           claude_args: |
             --model ${{ steps.route.outputs.model }}
             --max-turns 30
-            --append-system-prompt "When you finish implementing an issue, ALWAYS open a pull request targeting the default branch using your GitHub tools — do not stop at pushing a branch or leaving a create-PR link. Use a Conventional Commit title and include 'Closes #<issue-number>' in the PR body so the issue closes on merge."
+
+      # Make the loop hands-off. In tag mode the action pushes a branch but does
+      # not open the PR (it leaves a "Create PR" link), so we open it. Crucially we
+      # open it with a PAT (secrets.AGENT_PAT), NOT the default GITHUB_TOKEN: GitHub
+      # suppresses all workflow runs triggered by GITHUB_TOKEN, so a GITHUB_TOKEN PR
+      # would run neither ci.yml nor classify.yml and could never gate or auto-merge.
+      # A PAT identity triggers both, so the agent's PR flows through the exact same
+      # classify → ruleset/CODEOWNERS → auto-merge path as a human's. No PAT set →
+      # this step no-ops and the human uses the agent's "Create PR" link instead.
+      - name: Open the agent's PR (hands-off)
+        if: >-
+          success() &&
+          (github.event_name == 'issues' ||
+           (github.event_name == 'issue_comment' && !github.event.issue.pull_request))
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_PAT }}
+          ISSUE: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "No AGENT_PAT secret set — skipping auto-PR; use the agent's Create PR link."
+            exit 0
+          fi
+          branch=$(gh api "repos/$REPO/branches" --paginate --jq '.[].name' \
+            | grep "^claude/issue-${ISSUE}-" | sort | tail -1 || true)
+          if [ -z "$branch" ]; then
+            echo "No claude/issue-${ISSUE}-* branch — the agent made no changes."
+            exit 0
+          fi
+          if [ "$(gh pr list --repo "$REPO" --head "$branch" --state open --json number --jq 'length')" != "0" ]; then
+            echo "A PR is already open for $branch."
+            exit 0
+          fi
+          title=$(gh issue view "$ISSUE" --repo "$REPO" --json title --jq .title)
+          gh pr create --repo "$REPO" --base main --head "$branch" \
+            --title "$title" \
+            --body "Automated by the agent-in-the-loop for #${ISSUE}. Closes #${ISSUE}."
+          echo "Opened PR for $branch."

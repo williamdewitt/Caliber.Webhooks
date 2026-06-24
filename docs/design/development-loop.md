@@ -5,7 +5,7 @@ status: pre-release
 audience: [human, ai]
 tags: [caliber-webhooks, github, ci, automation, governance, autonomy, process]
 related: [./roadmap.md, ./decisions.md]
-updated: 2026-06-23
+updated: 2026-06-24
 ---
 
 # The Self-Building Development Loop
@@ -83,6 +83,8 @@ The in-CI agent (`claude-code-action`, headless on Actions runners) is **not** t
 3. **Backlog as data** — Milestones M0–M5, label taxonomy, roadmap seeded as issues, Project board. ✅ *(milestones + labels + seeded issues done; the Project v2 board still needs the `project` gh scope)*
 4. **Rule system + support automation** — branch protection/rulesets, CODEOWNERS, path-classifier, native auto-merge, Dependabot (first dogfood), CodeQL, dependency-review. ✅ *(all live — files in `ff51da1`; the four public-gated pieces activated on the flip below)*
 5. **Agent-in-the-loop** — a trusted human mentions `@claude` on an issue; the agent implements on a `claude/issue-<n>-*` branch, a post-step opens the PR, and the rest of the loop gates it unchanged. ✅ *(done — [`claude.yml`](../../.github/workflows/claude.yml): trusted-actor guard, `risk:*` → model routing, provision-either auth, deterministic auto-PR step. Setup: install the [Claude GitHub App](https://github.com/apps/claude); add an auth secret — `CLAUDE_CODE_OAUTH_TOKEN` (subscription) or `ANTHROPIC_API_KEY` (metered); and add **`AGENT_PAT`** (a fine-grained PAT, this repo, `contents:RW` + `pull-requests:RW`) so the agent's PR is opened by a non-`GITHUB_TOKEN` identity — see the note below.)*
+
+> **Tooling enrichment (dotnet-claude-kit / Roslyn MCP) — verified follow-up, issue #29.** The in-CI agent does **not** inherit the repo's `.claude/settings.json` plugin config: `claude-code-action` installs plugins only from its `plugins` / `plugin_marketplaces` **inputs**, and writes home settings from its `settings` input — it never reads the committed repo file (confirmed by code inspection *and* by observing a live `@claude` run whose `~/.claude/settings.json` held only the action's no-input default). To give the CI agent the kit's Roslyn MCP tools + agents/skills, `claude.yml` needs those inputs set plus a `setup-dotnet` step (the Roslyn server is a .NET process). The Roslyn server indexes the whole solution on first use, a **per-run cold-start cost**, so the recommendation is to **gate the enrichment behind a label** (only `risk:core`/`critical` or an explicit opt-in) rather than pay it on every trivial run — consistent with *cost control is gate control* above. Full finding + proposed diff: [the adoption doc](./dotnet-claude-kit-adoption.md#roslyn-mcp-and-the-whole-kit-in-ci--verified-finding). This is a `risk:core` workflow edit the CI App cannot self-apply (no `workflows` permission); a maintainer applies it.
 
 > **Why a PAT is needed for hands-off PRs.** In tag mode `claude-code-action` pushes a branch but does not open the PR (it leaves a "Create PR" link). We open it in a post-step — but a PR opened with the workflow's default `GITHUB_TOKEN` triggers **no** workflows (GitHub suppresses `GITHUB_TOKEN`-initiated runs to prevent recursion), so neither `ci.yml` nor `classify.yml` would run and the PR could never gate or auto-merge. Opening it with a **PAT** (`AGENT_PAT`) gives it a normal user identity, so CI + classify fire and the agent's PR flows through the identical `classify → ruleset/CODEOWNERS → auto-merge` path as a human's. Without the PAT the post-step no-ops and a human clicks the agent's "Create PR" link (the loop still works, just one click less hands-off).
 

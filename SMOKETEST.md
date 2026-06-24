@@ -1,0 +1,1 @@
+Zero-click agent loop test — safe to delete.

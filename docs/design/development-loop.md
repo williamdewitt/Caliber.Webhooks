@@ -40,7 +40,7 @@ One classification → gate + model + effort:
 |---|---|---|---|---|
 | **Trivial** | `docs/**`, `**/*.md`, formatting, Dependabot **patch** | none → **Haiku 4.5** (`claude-haiku-4-5`) | minimal | auto-merge on green, no human |
 | **Low** | `tests/**`, `samples/**` (not core) | **Sonnet 4.6** (`claude-sonnet-4-6`) | medium | CI green + light approval |
-| **Core** | `src/Caliber.Webhooks/**` | **Opus 4.8** (`claude-opus-4-8`) | high | CODEOWNERS human approval |
+| **Core** | `src/Caliber.Webhooks/**`, `.github/workflows/**` | **Opus 4.8** (`claude-opus-4-8`) | high | CODEOWNERS human approval |
 | **Critical** | SSRF/signing/secret-at-rest, `PublicAPI.*.txt`, `Migrations/**` | **Opus 4.8** | max | human approval **+** linked design update |
 
 Two principles fall out of this table:
@@ -56,7 +56,7 @@ Two principles fall out of this table:
 
 ## Enforcement — four primitives, no custom service
 
-1. **CODEOWNERS** maps protected paths (`src/**`, security files, `PublicAPI.*.txt`) to a human → those paths cannot merge without human review.
+1. **CODEOWNERS** maps protected paths (`src/**`, security files, `PublicAPI.*.txt`, `.github/workflows/**`) to a human → those paths cannot merge without human review. Workflow definitions are owned because they control CI privileges and secret access.
 2. **Branch protection / rulesets** on `main`: require PR, require CI status checks green, require approvals (+ CODEOWNERS review on protected paths).
 3. **Path-classifier workflow** labels each PR `risk:trivial|low|core|critical`.
 4. **Native auto-merge** is enabled by a workflow *only* when a PR is `risk:trivial` and CI is green.
@@ -74,7 +74,7 @@ The in-CI agent (`claude-code-action`, headless on Actions runners) is **not** t
 - **API key (`ANTHROPIC_API_KEY`)** → Anthropic API, **pay-per-token, billed separately** from any Claude subscription. Scales; metered money.
 - **Subscription token (`claude setup-token` → `CLAUDE_CODE_OAUTH_TOKEN`)** → draws from the **Claude subscription pool**, shared with (and competing against) interactive sessions.
 
-> **To verify before relying on the subscription path:** current **Pro-vs-Max eligibility and limits** for the Action's subscription auth, and the exact **effort/thinking** knob the Action exposes. Use the `claude-code-guide` agent / `/claude-api` skill. Until confirmed, design assumes API-key auth as the dependable path and treats subscription auth as a cost optimization.
+> **Resolved 2026-06-24.** The Action (`anthropics/claude-code-action@v1`) supports **both** auth paths via separate inputs: `anthropic_api_key` and `claude_code_oauth_token` (a Pro/Max subscription token minted locally with `claude setup-token`). `claude.yml` wires **both** to secrets — provision either; the Action prefers the OAuth token when present. The Action exposes **no first-class effort/thinking flag**; reasoning depth rides on the chosen model's own default (Claude Code runs Opus at `xhigh`), so the routing table's effort column is realised **through model tier** via `claude_args: --model …` (Haiku→trivial, Sonnet→low, Opus→core/critical). Subscription auth competes with interactive Claude Code sessions for the shared quota; API-key auth is metered and isolated — pick per repo (subscription is the zero-marginal-cost choice for driving this repo; API key is the portable default for forks/CI-at-scale).
 
 ## Build sequence
 
@@ -82,7 +82,7 @@ The in-CI agent (`claude-code-action`, headless on Actions runners) is **not** t
 2. **`release.yml` + Release Drafter** — tag → MinVer → pack → NuGet (manual-approval `release` environment). ✅ *(done, `ff51da1`; before the first cut, set the `release` environment's required reviewer and add the `NUGET_API_KEY` secret)*
 3. **Backlog as data** — Milestones M0–M5, label taxonomy, roadmap seeded as issues, Project board. ✅ *(milestones + labels + seeded issues done; the Project v2 board still needs the `project` gh scope)*
 4. **Rule system + support automation** — branch protection/rulesets, CODEOWNERS, path-classifier, native auto-merge, Dependabot (first dogfood), CodeQL, dependency-review. ✅ *(all live — files in `ff51da1`; the four public-gated pieces activated on the flip below)*
-5. **Agent-in-the-loop** — pointed at Tier 1–2 issues, gated by everything above. ⏳ *(next; also needs the API-key vs subscription-auth decision — see "The agent & its economics")*
+5. **Agent-in-the-loop** — a trusted human mentions `@claude` on an issue/PR; the agent implements and opens a PR, which the rest of the loop gates unchanged. ✅ *(done — [`claude.yml`](../../.github/workflows/claude.yml): trusted-actor guard, risk:* → model routing, provision-either auth. Before first use: install the [Claude GitHub App](https://github.com/apps/claude) and add one secret — `CLAUDE_CODE_OAUTH_TOKEN` (subscription) or `ANTHROPIC_API_KEY` (metered).)*
 
 ## The public flip — done
 
@@ -90,7 +90,7 @@ The repository is now **public**. Four capabilities required it (or a paid plan)
 
 ## Status
 
-The loop is **fully live**. Layers 1–3 and all of layer 4's automation are built, pushed, and gating: CI/CD (`ci.yml`, `release.yml`, Release Drafter), the deterministic path-classifier + native auto-merge on `risk:trivial`, the active `main` ruleset + CODEOWNERS, Dependabot + its patch-auto-merge dogfood, CodeQL + dependency-review, issue forms + triage, and the seeded milestone/label/issue backlog. Remaining: the Project v2 board (`project` gh scope) and the agent (layer 4 / step 5, pending the auth decision). This file is the contract those `.github/` workflows are built against, updated as each lands.
+The loop is **complete and live** — all four layers built, pushed, and gating: CI/CD (`ci.yml`, `release.yml`, Release Drafter), the deterministic path-classifier + native auto-merge on `risk:trivial`, the active `main` ruleset + CODEOWNERS, Dependabot + its patch-auto-merge dogfood, CodeQL + dependency-review, issue forms + triage, the seeded milestone/label/issue backlog on Project board #10, and the **agent-in-the-loop** (`claude.yml`). The only manual step left before the agent's first run is operational, not architectural: install the Claude GitHub App and add one auth secret. This file is the contract those `.github/` workflows are built against, updated as each lands.
 
 ## See also
 

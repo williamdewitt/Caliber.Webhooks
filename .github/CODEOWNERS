@@ -11,6 +11,11 @@
 # risk:core — the library itself. Always human-reviewed.
 /src/Caliber.Webhooks/              @williamdewitt
 
+# risk:core — CI workflow definitions control privileges + secret access, so they
+# require the owner's review (and never auto-merge). Non-workflow .github/ config
+# (issue templates, dependabot, release-drafter) stays trivial / unowned.
+/.github/workflows/                 @williamdewitt
+
 # risk:critical — public API surface + EF migrations (human review + linked design).
 # (SSRF / signing / secret-at-rest source lives under src/ above, so it is covered.)
 PublicAPI.Shipped.txt               @williamdewitt

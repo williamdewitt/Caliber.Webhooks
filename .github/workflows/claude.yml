@@ -1,0 +1,97 @@
+name: Claude (agent-in-the-loop)
+
+# Layer 4 / step 5 of the self-building loop: the agent itself.
+#
+# A trusted human mentions @claude on an issue or PR; the agent picks the work
+# up, implements it, and opens (or pushes to) a PR. From there the rest of the
+# loop takes over unchanged — classify.yml stamps the PR's risk:* band, the main
+# ruleset + CODEOWNERS decide the merge gate, and trivial PRs self-merge on green.
+# The agent only *produces* the change; it never decides its own merge.
+#
+# The routing-table spine (docs/design/development-loop.md) is realised here as
+# model selection: one classification (the issue/PR's risk:* label) chooses the
+# cheapest model that can do the job well — Haiku for trivial, Sonnet for low,
+# Opus for core/critical. Effort rides on each model's own default (Claude Code
+# runs Opus at xhigh), so model tier *is* the effort dial.
+#
+# Auth is provision-either: wire both secrets and set whichever you have.
+#   - CLAUDE_CODE_OAUTH_TOKEN  → draws from your Pro/Max subscription quota
+#                                (generate locally with `claude setup-token`).
+#   - ANTHROPIC_API_KEY        → metered pay-per-token API, billed separately.
+# The action uses the OAuth token when present, else the API key. With neither
+# set the job no-ops with an auth error — harmless until a secret is added.
+
+on:
+  issue_comment:
+    types: [ created ]
+  pull_request_review_comment:
+    types: [ created ]
+  issues:
+    types: [ opened ]
+
+# Least privilege for what the agent needs: read/write code, open PRs, comment on
+# issues, and mint the OIDC token the action uses. No more.
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+
+# One run per conversation; a newer mention supersedes an in-flight one.
+concurrency:
+  group: claude-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  claude:
+    # Public-repo guard: only act on an explicit @claude from a trusted actor
+    # (owner / org member / repo collaborator). This keeps arbitrary external
+    # users from triggering privileged, billable runs. The bot's own comments are
+    # excluded so the agent can't trigger itself into a loop.
+    if: |
+      github.actor != 'github-actions[bot]' &&
+      (
+        (github.event_name == 'issue_comment' &&
+          contains(github.event.comment.body, '@claude') &&
+          contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
+        (github.event_name == 'pull_request_review_comment' &&
+          contains(github.event.comment.body, '@claude') &&
+          contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
+        (github.event_name == 'issues' &&
+          contains(github.event.issue.body, '@claude') &&
+          contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association))
+      )
+    runs-on: ubuntu-latest
+    steps:
+      # Map the work's risk:* band → model (the routing-table spine). Highest
+      # blast radius wins; unlabelled work (e.g. a brand-new issue) defaults to
+      # the balanced model.
+      - name: Route risk band → model
+        id: route
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const ev = context.payload;
+            const raw = ev.issue?.labels || ev.pull_request?.labels || [];
+            const labels = raw.map(l => (typeof l === 'string' ? l : l.name));
+
+            let model = 'claude-sonnet-4-6'; // balanced default (risk:low and unlabelled)
+            if (labels.includes('risk:core') || labels.includes('risk:critical')) {
+              model = 'claude-opus-4-8';     // highest capability for the library + critical surface
+            } else if (labels.includes('risk:trivial')) {
+              model = 'claude-haiku-4-5';    // cheapest for docs / config / markdown
+            }
+
+            core.setOutput('model', model);
+            core.notice(`Routing to ${model} (labels: ${labels.join(', ') || 'none'}).`);
+
+      - name: Run Claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          # Provision-either auth (see header). The action prefers the OAuth token.
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Risk-routed model + a turn cap so a runaway task can't burn the budget.
+          claude_args: |
+            --model ${{ steps.route.outputs.model }}
+            --max-turns 30

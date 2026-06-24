@@ -26,6 +26,8 @@ on:
     types: [ created ]
   pull_request_review_comment:
     types: [ created ]
+  pull_request_review:
+    types: [ submitted ]
   issues:
     types: [ opened ]
 
@@ -36,6 +38,7 @@ permissions:
   pull-requests: write
   issues: write
   id-token: write
+  actions: read # the action reads its own workflow run metadata
 
 # One run per conversation; a newer mention supersedes an in-flight one.
 concurrency:
@@ -59,10 +62,21 @@ jobs:
           contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
         (github.event_name == 'issues' &&
           contains(github.event.issue.body, '@claude') &&
-          contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association))
+          contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)) ||
+        (github.event_name == 'pull_request_review' &&
+          contains(github.event.review.body, '@claude') &&
+          contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association))
       )
     runs-on: ubuntu-latest
     steps:
+      # The agent creates a branch and pushes a PR, so it needs the repo on disk.
+      # Without a checkout the working tree is empty and branch setup fails
+      # (`git fetch origin main`, exit 128).
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
       # Map the work's risk:* band → model (the routing-table spine). Highest
       # blast radius wins; unlabelled work (e.g. a brand-new issue) defaults to
       # the balanced model.

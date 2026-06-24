@@ -18,7 +18,7 @@ updated: 2026-06-24
 
 1. **Travels with the repo** — any clone or contributor gets the kit, not just the maintainer's machine.
 2. **Templates the portfolio** — the same `.claude/settings.json` is the copy-paste starting point for the other Caliber projects.
-3. **Reaches the CI agent** — the `@claude` agent-in-the-loop ([`claude.yml`](../../.github/workflows/claude.yml)) runs in the checked-out repo, so it inherits the kit's agents, commands, and skills for issue-driven work. *(The Roslyn MCP server additionally needs a .NET runtime in that job to expose its 15 tools — a deliberate follow-up, see [Open items](#open-items).)*
+3. **Does *not* reach the CI agent on its own.** `claude-code-action` does **not** read this file's plugin config, so the `@claude` agent-in-the-loop ([`claude.yml`](../../.github/workflows/claude.yml)) sees none of the kit unless it is wired in **explicitly** via the action's inputs (plus a .NET runtime for the Roslyn MCP server). This was assumed to be free; it is not. See [Roslyn MCP in CI — verified finding](#roslyn-mcp-and-the-whole-kit-in-ci--verified-finding).
 
 There is nothing to "turn on" per session: the kit is also enabled in the maintainer's user settings, so its hooks and tools are already live locally. This doc exists so the capability is **used deliberately** and its opinions are **reconciled**, not absorbed by accident.
 
@@ -62,9 +62,84 @@ The kit is opinionated. "Adopt as much as fits" means adopting what aligns and *
 
 We also keep our own **memory / OKF docs** as the system of record rather than the kit's `instinct-system` / `convention-learner` / `split-memory` skills — those would duplicate (and could drift from) the handoff docs and agent memory.
 
-## Open items
+## Roslyn MCP (and the whole kit) in CI — verified finding
 
-- **Roslyn MCP in CI.** Skills/agents/commands reach the `@claude` agent for free via repo settings; the `cwm-roslyn-navigator` MCP server needs a `dotnet` setup step in `claude.yml` to expose its 15 tools there. Wire it once confirmed the action picks up the repo's plugin settings on a live `@claude` run.
+> **Investigated 2026-06-24 (issue #29), from inside a live `@claude` CI run.** The earlier assumption that "skills/agents/commands reach the `@claude` agent for free via repo settings" is **wrong**. They do not. Here is what actually happens, and the wiring that fixes it.
+
+### AC1 — does the in-CI agent inherit the repo-scoped `.claude/settings.json` plugins? **No.**
+
+Two independent lines of evidence, both conclusive:
+
+1. **Code inspection of `anthropics/claude-code-action@v1`.** The action never reads the repo's `.claude/settings.json` plugin config:
+   - `base-action/src/setup-claude-code-settings.ts` writes **`~/.claude/settings.json`** (home scope) by merging only the action's `settings` **input** (`INPUT_SETTINGS`) over what's already there, then force-sets `enableAllProjectMcpServers: true`. Our `claude.yml` passes **no** `settings` input, so nothing from the repo's `extraKnownMarketplaces` / `enabledPlugins` is ever loaded here.
+   - `base-action/src/install-plugins.ts` is the **only** thing that runs `claude plugin marketplace add` / `claude plugin install`, and it is driven **exclusively** by the action's `plugins` + `plugin_marketplaces` **inputs** (`INPUT_PLUGINS` / `INPUT_PLUGIN_MARKETPLACES`). With both unset, it logs "No marketplaces specified" / "No plugins specified" and installs nothing.
+2. **Empirical, from this very `@claude` run.** The job's `~/.claude/settings.json` contained exactly `{"enableAllProjectMcpServers": true}` — the no-input default the action writes — with **none** of the repo's marketplace/plugin keys merged in. Correspondingly, **no** kit capability was live in the session: none of the kit's agents (`security-auditor`, `ef-core-specialist`, …), none of its 47 skills (`idesign`, `ef-core`, …), and **none** of the 15 `cwm-roslyn-navigator` MCP tools were present.
+
+**Why.** The repo's `.claude/settings.json` is still on disk in the checkout, and `enabledPlugins` only *enables* a plugin from an **already-installed** marketplace — it does not itself clone/fetch one. In a fresh CI checkout the marketplace was never added, so there is nothing to enable. `enableAllProjectMcpServers` only auto-approves project `.mcp.json` servers, **not** plugin-provided MCP servers. **Conclusion: the kit must be wired explicitly via the action's inputs.** (It would help every contributor too, but in CI it is mandatory.)
+
+### Recommended wiring (proposed `claude.yml` change)
+
+This is `.github/workflows/**` → **`risk:core`**, CODEOWNERS-reviewed, never auto-merges. The CI agent (GitHub App token) **cannot** push workflow edits — the `workflows` permission is withheld — so this diff is recorded here for a maintainer to apply by hand.
+
+1. **A .NET setup step**, pinned to `global.json` (the Roslyn MCP server is a .NET process and needs a runtime), added after `Checkout` and before `Run Claude`:
+
+   ```yaml
+         # The Roslyn MCP server (cwm-roslyn-navigator, from dotnet-claude-kit) is a
+         # .NET process; it needs a runtime to start. Pin to global.json so CI uses the
+         # same SDK the library builds against.
+         - name: Setup .NET (for the Roslyn MCP server)
+           uses: actions/setup-dotnet@v5
+           with:
+             global-json-file: global.json
+   ```
+
+2. **Explicit plugin install** on the `Run Claude` step (the fix for AC1) — the action installs only what these inputs name:
+
+   ```yaml
+         - name: Run Claude
+           uses: anthropics/claude-code-action@v1
+           with:
+             claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+             anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+             # The in-CI agent does NOT inherit the repo's .claude/settings.json plugin
+             # config — the action installs ONLY plugins named here. Wire the kit
+             # explicitly so its Roslyn MCP tools + agents/skills/commands are live in CI.
+             plugin_marketplaces: |
+               https://github.com/codewithmukesh/dotnet-claude-kit.git
+             plugins: |
+               dotnet-claude-kit@dotnet-claude-kit
+             claude_args: |
+               --model ${{ steps.route.outputs.model }}
+               --max-turns 30
+   ```
+
+   The trusted-actor guard, `risk:* → model` routing, `--max-turns 30` cap, and the `AGENT_PAT` auto-PR step are **unchanged** — only the `Setup .NET` step and the two plugin inputs are added.
+
+3. **Provisioning `cwm-roslyn-navigator` itself — confirm before applying.** The plugin declares its MCP server as `cwm-roslyn-navigator --solution ${workspaceFolder}`, i.e. it expects that command on `PATH`. Whether the plugin **bundles** the binary or expects a host-installed **.NET global tool** could not be confirmed from inside the CI sandbox (outbound network to the plugin repo is blocked there). Before this lands, a maintainer should check the plugin's `.mcp.json` / install docs and, if it is a global tool, add a restore step, e.g.:
+
+   ```yaml
+         - name: Install the Roslyn navigator tool   # only if the plugin does NOT bundle it
+           run: dotnet tool install --global cwm-roslyn-navigator   # confirm the exact package id
+   ```
+
+   Acceptance ("confirm `get_project_graph` is callable in a CI run") can only be closed by a maintainer-applied workflow change plus one observed run, since the agent cannot self-modify `claude.yml`.
+
+### Cold-start cost — and the recommended gate
+
+Turning this on adds, to **every** `@claude` run, the sum of: the plugin marketplace clone + plugin install; `setup-dotnet` (cached, ~5–15 s warm); any `dotnet tool` restore; and — the real cost — the Roslyn MCP **indexing the whole solution** (a full MSBuild/Roslyn workspace load) on first tool call. That last item grows with solution size and is paid *per run*, even for a one-line docs PR that never needs navigation. This cuts against the loop's **"cost control is gate control"** principle.
+
+**Recommendation: gate the kit/Roslyn wiring behind a label** (e.g. only enrich when the work is `risk:core` / `risk:critical`, or behind an explicit `agent:deep` label), rather than paying the index cost on trivial/low work. Mechanically, the existing `Route risk band → model` step already inspects the labels — have it also emit an `enable_roslyn` output and pass the plugin inputs conditionally:
+
+```yaml
+        plugin_marketplaces: ${{ steps.route.outputs.enable_roslyn == 'true' && 'https://github.com/codewithmukesh/dotnet-claude-kit.git' || '' }}
+        plugins:             ${{ steps.route.outputs.enable_roslyn == 'true' && 'dotnet-claude-kit@dotnet-claude-kit' || '' }}
+```
+
+(and guard the `Setup .NET` step with the same `if:`). Today the repo is an M0 shell, so the index cost is small — but the gate keeps it from scaling into every trivial run as the solution grows.
+
+### Status / deferral
+
+AC1 is **answered** (not inherited; wire explicitly). The remaining acceptance criteria — the `setup-dotnet` step, the plugin inputs, and the live `get_project_graph` confirmation — require a **maintainer-applied** `claude.yml` change (the App cannot push to `.github/workflows/**`). A **label-gated** rollout is the recommended shape so the per-run Roslyn cold-start is only paid where navigation earns it; an always-on rollout is also viable while the solution is small. Either is a deliberate maintainer call at review time.
 
 ## See also
 - [The self-building development loop](./development-loop.md) — how a change merges.

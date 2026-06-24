@@ -106,6 +106,11 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           # Risk-routed model + a turn cap so a runaway task can't burn the budget.
+          # The append-system-prompt makes the loop hands-off: the agent opens the
+          # PR itself (under the Claude App identity, which *does* trigger classify
+          # → gate → auto-merge), instead of only pushing a branch and leaving a
+          # "Create PR" link for a human to click.
           claude_args: |
             --model ${{ steps.route.outputs.model }}
             --max-turns 30
+            --append-system-prompt "When you finish implementing an issue, ALWAYS open a pull request targeting the default branch using your GitHub tools — do not stop at pushing a branch or leaving a create-PR link. Use a Conventional Commit title and include 'Closes #<issue-number>' in the PR body so the issue closes on merge."

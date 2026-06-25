@@ -9,6 +9,12 @@
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <!--
+      MA0158 (use System.Threading.Lock) only applies on net9+, but the library multi-targets net8.0
+      where that type does not exist. Suppress via NoWarn rather than .editorconfig severity: the
+      latter is not applied consistently in the multi-targeting build path (e.g. dotnet pack).
+    -->
+    <NoWarn>$(NoWarn);MA0158</NoWarn>
   </PropertyGroup>
 
   <!-- Shared package identity (applied when a project opts into packing) -->

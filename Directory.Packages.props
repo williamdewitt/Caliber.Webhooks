@@ -12,6 +12,12 @@
     <PackageVersion Include="Meziantou.Analyzer" Version="3.0.111" />
   </ItemGroup>
 
+  <!-- Runtime dependencies (pinned to the net8 floor; net10 consumers unify upward) -->
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+  </ItemGroup>
+
   <!-- Test stack -->
   <ItemGroup>
     <PackageVersion Include="xunit.v3" Version="3.2.2" />

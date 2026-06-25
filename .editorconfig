@@ -34,3 +34,7 @@ csharp_prefer_braces = true:suggestion
 dotnet_diagnostic.CA1707.severity = none
 # CA1515: types can be internal — not relevant for test classes
 dotnet_diagnostic.CA1515.severity = none
+# xUnit1051: threading TestContext.Current.CancellationToken through every call is noise for fast unit tests
+dotnet_diagnostic.xUnit1051.severity = none
+# MA0004: ConfigureAwait(false) is unnecessary in xUnit v3 tests (no sync context); library code still honours it
+dotnet_diagnostic.MA0004.severity = none

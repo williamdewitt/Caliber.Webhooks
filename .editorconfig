@@ -20,6 +20,9 @@ csharp_style_namespace_declarations = file_scoped:warning
 dotnet_sort_system_directives_first = true
 csharp_using_directive_placement = outside_namespace:warning
 
+# MA0158: System.Threading.Lock is net9+, but the library multi-targets net8.0 — keep a portable lock object
+dotnet_diagnostic.MA0158.severity = none
+
 # Prefer modern, expressive C#
 csharp_style_var_when_type_is_apparent = true:suggestion
 dotnet_style_prefer_conditional_expression_over_assignment = true:suggestion
@@ -34,3 +37,7 @@ csharp_prefer_braces = true:suggestion
 dotnet_diagnostic.CA1707.severity = none
 # CA1515: types can be internal — not relevant for test classes
 dotnet_diagnostic.CA1515.severity = none
+# xUnit1051: threading TestContext.Current.CancellationToken through every call is noise for fast unit tests
+dotnet_diagnostic.xUnit1051.severity = none
+# MA0004: ConfigureAwait(false) is unnecessary in xUnit v3 tests (no sync context); library code still honours it
+dotnet_diagnostic.MA0004.severity = none

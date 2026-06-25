@@ -20,4 +20,9 @@
     <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The iDesign engines / managers / resource-access are internal; tests reach them directly. -->
+    <InternalsVisibleTo Include="Caliber.Webhooks.Tests" />
+  </ItemGroup>
+
 </Project>

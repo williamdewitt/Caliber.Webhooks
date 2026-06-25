@@ -10,16 +10,19 @@ namespace Caliber.Webhooks;
 /// </summary>
 internal sealed class HttpDeliveryChannel : IDeliveryChannel
 {
+    /// <summary>The named <see cref="HttpClient"/> registered for webhook delivery.</summary>
+    internal const string HttpClientName = "Caliber.Webhooks";
+
     private const string MediaType = "application/json";
 
-    private readonly HttpClient _httpClient;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly CaliberWebhooksOptions _options;
 
-    public HttpDeliveryChannel(HttpClient httpClient, CaliberWebhooksOptions options)
+    public HttpDeliveryChannel(IHttpClientFactory httpClientFactory, CaliberWebhooksOptions options)
     {
-        ArgumentNullException.ThrowIfNull(httpClient);
+        ArgumentNullException.ThrowIfNull(httpClientFactory);
         ArgumentNullException.ThrowIfNull(options);
-        _httpClient = httpClient;
+        _httpClientFactory = httpClientFactory;
         _options = options;
     }
 
@@ -37,12 +40,13 @@ internal sealed class HttpDeliveryChannel : IDeliveryChannel
         request.Headers.TryAddWithoutValidation(SigningEngine.TimestampHeader, headers.Timestamp);
         request.Headers.TryAddWithoutValidation(SigningEngine.SignatureHeader, headers.Signature);
 
+        var httpClient = _httpClientFactory.CreateClient(HttpClientName);
         using var timeout = new CancellationTokenSource(_options.HttpTimeout, _options.TimeProvider);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeout.Token);
 
         try
         {
-            using var response = await _httpClient
+            using var response = await httpClient
                 .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, linked.Token)
                 .ConfigureAwait(false);
 

@@ -4,7 +4,12 @@ Project-specific guidance. This file **inherits** the portfolio root `../../CLAU
 
 ## dotnet-claude-kit is wired into this repo
 
-This repo enables the **dotnet-claude-kit** plugin at repo scope (`.claude/settings.json`), so its agents, commands, skills, Roslyn MCP tools, and hooks travel with the repo — for every contributor, every clone, and the CI `@claude` agent (`.github/workflows/claude.yml`). The full capability → flow mapping is **[docs/design/dotnet-claude-kit-adoption.md](docs/design/dotnet-claude-kit-adoption.md)** — consult it; the reach-for shortlist:
+This repo uses the **dotnet-claude-kit** plugin through **two separate channels** — the CI agent does *not* inherit local settings (verified — [#29](https://github.com/williamdewitt/Caliber.Webhooks/issues/29)):
+
+- **Locally** (every contributor / clone): repo-scoped [`.claude/settings.json`](.claude/settings.json) enables the **full** kit — agents, commands, skills, the Roslyn MCP tools, and hooks.
+- **In CI** (the `@claude` agent-in-the-loop, [`.github/workflows/claude.yml`](.github/workflows/claude.yml)): the kit's **agents, commands, and skills** are installed via the workflow's explicit `plugins` inputs. The **Roslyn MCP tools are deferred** there (they need a .NET runtime + a per-run whole-solution index) — tracked in [#29](https://github.com/williamdewitt/Caliber.Webhooks/issues/29).
+
+The full capability → flow mapping is **[docs/design/dotnet-claude-kit-adoption.md](docs/design/dotnet-claude-kit-adoption.md)** — consult it; the reach-for shortlist:
 
 - **Before any PR:** `/verify` (7-phase build/analyze/test/security/format gate), then `/code-review` (Roslyn-powered). These are the *local* gate that complements the CI `classify.yml` + ruleset gate.
 - **Security surface (HMAC signing, the SSRF guard — decision #4):** the `security-auditor` agent + `/security-scan`. This is `risk:critical` work — never auto-merges.
@@ -12,7 +17,7 @@ This repo enables the **dotnet-claude-kit** plugin at repo scope (`.claude/setti
 - **Tests (xUnit v3):** the `test-engineer` agent + `/tdd`.
 - **Delivery HTTP + retry/jitter (#5):** the `httpclient-factory` and `resilience` skills.
 - **OTel attempt history (#3):** the `opentelemetry` skill.
-- **Navigation & quality, always:** the Roslyn MCP tools — `get_public_api` (we ship `PublicAPI.*.txt` — a critical surface), `detect_antipatterns`, `detect_circular_dependencies`, `find_references`.
+- **Navigation & quality, always (local):** the Roslyn MCP tools — `get_public_api` (we ship `PublicAPI.*.txt` — a critical surface), `detect_antipatterns`, `detect_circular_dependencies`, `find_references`. (Deferred in CI — see [#29](https://github.com/williamdewitt/Caliber.Webhooks/issues/29).)
 
 ## House overrides — these WIN over kit defaults
 

@@ -18,7 +18,7 @@ updated: 2026-06-24
 
 1. **Travels with the repo** — any clone or contributor gets the kit, not just the maintainer's machine.
 2. **Templates the portfolio** — the same `.claude/settings.json` is the copy-paste starting point for the other Caliber projects.
-3. **Does *not* reach the CI agent on its own.** `claude-code-action` does **not** read this file's plugin config, so the `@claude` agent-in-the-loop ([`claude.yml`](../../.github/workflows/claude.yml)) sees none of the kit unless it is wired in **explicitly** via the action's inputs (plus a .NET runtime for the Roslyn MCP server). This was assumed to be free; it is not. See [Roslyn MCP in CI — verified finding](#roslyn-mcp-and-the-whole-kit-in-ci--verified-finding).
+3. **Does *not* reach the CI agent on its own.** `claude-code-action` does **not** read this file's plugin config — so the `@claude` agent-in-the-loop ([`claude.yml`](../../.github/workflows/claude.yml)) gets the kit only because the workflow names it **explicitly** via the action's `plugins` inputs. CI now installs the kit's **agents, commands, and skills** that way (a cheap marketplace clone + install); the **Roslyn MCP tools remain deferred** there — they need a .NET runtime + a per-run whole-solution index ([issue #29](https://github.com/williamdewitt/Caliber.Webhooks/issues/29)). This was assumed to be free; it is not. See [Roslyn MCP in CI — verified finding](#roslyn-mcp-and-the-whole-kit-in-ci--verified-finding).
 
 There is nothing to "turn on" per session: the kit is also enabled in the maintainer's user settings, so its hooks and tools are already live locally. This doc exists so the capability is **used deliberately** and its opinions are **reconciled**, not absorbed by accident.
 
@@ -139,7 +139,12 @@ Turning this on adds, to **every** `@claude` run, the sum of: the plugin marketp
 
 ### Status / deferral
 
-AC1 is **answered** (not inherited; wire explicitly). The remaining acceptance criteria — the `setup-dotnet` step, the plugin inputs, and the live `get_project_graph` confirmation — require a **maintainer-applied** `claude.yml` change (the App cannot push to `.github/workflows/**`). A **label-gated** rollout is the recommended shape so the per-run Roslyn cold-start is only paid where navigation earns it; an always-on rollout is also viable while the solution is small. Either is a deliberate maintainer call at review time.
+This was split MLP-style — wire the cheap half now, defer the expensive half:
+
+- **Landed (maintainer-applied to `claude.yml`).** The `plugin_marketplaces` + `plugins` inputs are on the `Run Claude` step, so the in-CI `@claude` agent now gets the kit's **agents, commands, and skills** on every run — a cheap marketplace clone + install, **no indexing**. This is unconditional (not label-gated): plain-markdown capabilities cost ~nothing, so there's no reason to withhold them from trivial/low runs. The trusted-actor guard, `risk:* → model` routing, `--max-turns 30`, and the `AGENT_PAT` auto-PR step are unchanged.
+- **Still deferred — Roslyn MCP server in CI ([issue #29](https://github.com/williamdewitt/Caliber.Webhooks/issues/29) stays open).** The `setup-dotnet` step, provisioning `cwm-roslyn-navigator`, and the live `get_project_graph` confirmation are *not* wired. That path pays the per-run whole-solution index cold-start, so when it lands it should be **label-gated** to `risk:core` / `critical` work — have the `Route` step emit an `enable_roslyn` output and apply the .NET-dependent bits (and the plugin's MCP server) conditionally (snippets above). On today's M0 shell the index would be near-zero value, which is why it waits.
+
+AC1 is **answered** (not inherited; wire explicitly), and the agents/commands/skills criterion is now met in CI. The Roslyn-MCP criteria remain a deliberate, label-gated future step.
 
 ## See also
 - [The self-building development loop](./development-loop.md) — how a change merges.

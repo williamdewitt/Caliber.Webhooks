@@ -105,6 +105,19 @@ jobs:
           # Provision-either auth (see header). The action prefers the OAuth token.
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Give the CI agent the dotnet-claude-kit. The in-CI agent does NOT inherit
+          # the repo's committed .claude/settings.json (verified — issue #29); the
+          # action installs ONLY the plugins named here. These two inputs bring the
+          # kit's agents, commands, and skills — plain markdown, so it's just a cheap
+          # marketplace clone + install with no indexing on every run. They do NOT
+          # light up the Roslyn MCP server (cwm-roslyn-navigator): that needs a .NET
+          # runtime + the tool on PATH and pays a whole-solution index cold-start per
+          # run, so it stays deferred and — when added — label-gated to risk:core /
+          # critical work. See docs/design/dotnet-claude-kit-adoption.md (issue #29).
+          plugin_marketplaces: |
+            https://github.com/codewithmukesh/dotnet-claude-kit.git
+          plugins: |
+            dotnet-claude-kit@dotnet-claude-kit
           # Risk-routed model + a turn cap so a runaway task can't burn the budget.
           claude_args: |
             --model ${{ steps.route.outputs.model }}

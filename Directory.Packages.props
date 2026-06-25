@@ -10,6 +10,7 @@
     <PackageVersion Include="MinVer" Version="7.0.0" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.300" />
     <PackageVersion Include="Meziantou.Analyzer" Version="3.0.111" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.4" />
   </ItemGroup>
 
   <!-- Runtime dependencies (pinned to the net8 floor; net10 consumers unify upward) -->

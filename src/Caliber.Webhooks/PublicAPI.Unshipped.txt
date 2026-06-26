@@ -1,0 +1,98 @@
+#nullable enable
+Caliber.Webhooks.CaliberWebhooks
+Caliber.Webhooks.CaliberWebhooksOptions
+Caliber.Webhooks.CaliberWebhooksOptions.AllowInsecureHttp.get -> bool
+Caliber.Webhooks.CaliberWebhooksOptions.AllowInsecureHttp.set -> void
+Caliber.Webhooks.CaliberWebhooksOptions.BatchSize.get -> int
+Caliber.Webhooks.CaliberWebhooksOptions.BatchSize.set -> void
+Caliber.Webhooks.CaliberWebhooksOptions.CaliberWebhooksOptions() -> void
+Caliber.Webhooks.CaliberWebhooksOptions.HttpTimeout.get -> System.TimeSpan
+Caliber.Webhooks.CaliberWebhooksOptions.HttpTimeout.set -> void
+Caliber.Webhooks.CaliberWebhooksOptions.LeaseDuration.get -> System.TimeSpan
+Caliber.Webhooks.CaliberWebhooksOptions.LeaseDuration.set -> void
+Caliber.Webhooks.CaliberWebhooksOptions.MaxAttempts.get -> int
+Caliber.Webhooks.CaliberWebhooksOptions.MaxAttempts.set -> void
+Caliber.Webhooks.CaliberWebhooksOptions.MaxConcurrency.get -> int
+Caliber.Webhooks.CaliberWebhooksOptions.MaxConcurrency.set -> void
+Caliber.Webhooks.CaliberWebhooksOptions.MaxPayloadBytes.get -> int
+Caliber.Webhooks.CaliberWebhooksOptions.MaxPayloadBytes.set -> void
+Caliber.Webhooks.CaliberWebhooksOptions.PollInterval.get -> System.TimeSpan
+Caliber.Webhooks.CaliberWebhooksOptions.PollInterval.set -> void
+Caliber.Webhooks.CaliberWebhooksOptions.RetrySchedule.get -> Caliber.Webhooks.RetrySchedule!
+Caliber.Webhooks.CaliberWebhooksOptions.RetrySchedule.set -> void
+Caliber.Webhooks.CaliberWebhooksOptions.TimeProvider.get -> System.TimeProvider!
+Caliber.Webhooks.CaliberWebhooksOptions.TimeProvider.set -> void
+Caliber.Webhooks.CaliberWebhooksOptions.TimestampTolerance.get -> System.TimeSpan
+Caliber.Webhooks.CaliberWebhooksOptions.TimestampTolerance.set -> void
+Caliber.Webhooks.DeliveryStatus
+Caliber.Webhooks.DeliveryStatus.DeadLettered = 2 -> Caliber.Webhooks.DeliveryStatus
+Caliber.Webhooks.DeliveryStatus.Delivered = 1 -> Caliber.Webhooks.DeliveryStatus
+Caliber.Webhooks.DeliveryStatus.Pending = 0 -> Caliber.Webhooks.DeliveryStatus
+Caliber.Webhooks.Endpoint
+Caliber.Webhooks.Endpoint.Description.get -> string?
+Caliber.Webhooks.Endpoint.Description.init -> void
+Caliber.Webhooks.Endpoint.Enabled.get -> bool
+Caliber.Webhooks.Endpoint.Enabled.init -> void
+Caliber.Webhooks.Endpoint.Endpoint() -> void
+Caliber.Webhooks.Endpoint.EventTypes.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Caliber.Webhooks.Endpoint.EventTypes.init -> void
+Caliber.Webhooks.Endpoint.Id.get -> System.Guid
+Caliber.Webhooks.Endpoint.Id.init -> void
+Caliber.Webhooks.Endpoint.Secret.get -> string!
+Caliber.Webhooks.Endpoint.Secret.init -> void
+Caliber.Webhooks.Endpoint.TenantKey.get -> string?
+Caliber.Webhooks.Endpoint.TenantKey.init -> void
+Caliber.Webhooks.Endpoint.Url.get -> string!
+Caliber.Webhooks.Endpoint.Url.init -> void
+Caliber.Webhooks.IWebhookEndpoints
+Caliber.Webhooks.IWebhookEndpoints.CreateAsync(Caliber.Webhooks.Endpoint! endpoint, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Caliber.Webhooks.Endpoint!>!
+Caliber.Webhooks.IWebhookEndpoints.DisableAsync(System.Guid endpointId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Caliber.Webhooks.IWebhookEndpoints.UpdateAsync(Caliber.Webhooks.Endpoint! endpoint, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Caliber.Webhooks.IWebhookPublisher
+Caliber.Webhooks.IWebhookPublisher.PublishAsync(string! eventType, object! payload, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Caliber.Webhooks.RetrySchedule
+Caliber.Webhooks.RetrySchedule.Delays.get -> System.Collections.Generic.IReadOnlyList<System.TimeSpan>!
+Caliber.Webhooks.WebhookEvent
+Caliber.Webhooks.WebhookEvent.CreatedAt.get -> System.DateTimeOffset
+Caliber.Webhooks.WebhookEvent.CreatedAt.init -> void
+Caliber.Webhooks.WebhookEvent.EventType.get -> string!
+Caliber.Webhooks.WebhookEvent.EventType.init -> void
+Caliber.Webhooks.WebhookEvent.Id.get -> System.Guid
+Caliber.Webhooks.WebhookEvent.Id.init -> void
+Caliber.Webhooks.WebhookEvent.Payload.get -> string!
+Caliber.Webhooks.WebhookEvent.Payload.init -> void
+Caliber.Webhooks.WebhookEvent.WebhookEvent() -> void
+Caliber.Webhooks.WebhookMessage
+Caliber.Webhooks.WebhookMessage.AttemptCount.get -> int
+Caliber.Webhooks.WebhookMessage.AttemptCount.set -> void
+Caliber.Webhooks.WebhookMessage.CreatedAt.get -> System.DateTimeOffset
+Caliber.Webhooks.WebhookMessage.CreatedAt.init -> void
+Caliber.Webhooks.WebhookMessage.EndpointId.get -> System.Guid
+Caliber.Webhooks.WebhookMessage.EndpointId.init -> void
+Caliber.Webhooks.WebhookMessage.EventId.get -> System.Guid
+Caliber.Webhooks.WebhookMessage.EventId.init -> void
+Caliber.Webhooks.WebhookMessage.EventType.get -> string!
+Caliber.Webhooks.WebhookMessage.EventType.init -> void
+Caliber.Webhooks.WebhookMessage.Id.get -> System.Guid
+Caliber.Webhooks.WebhookMessage.Id.init -> void
+Caliber.Webhooks.WebhookMessage.LastError.get -> string?
+Caliber.Webhooks.WebhookMessage.LastError.set -> void
+Caliber.Webhooks.WebhookMessage.LeaseUntil.get -> System.DateTimeOffset?
+Caliber.Webhooks.WebhookMessage.LeaseUntil.set -> void
+Caliber.Webhooks.WebhookMessage.NextAttemptAt.get -> System.DateTimeOffset
+Caliber.Webhooks.WebhookMessage.NextAttemptAt.set -> void
+Caliber.Webhooks.WebhookMessage.Owner.get -> string?
+Caliber.Webhooks.WebhookMessage.Owner.set -> void
+Caliber.Webhooks.WebhookMessage.Payload.get -> string!
+Caliber.Webhooks.WebhookMessage.Payload.init -> void
+Caliber.Webhooks.WebhookMessage.Status.get -> Caliber.Webhooks.DeliveryStatus
+Caliber.Webhooks.WebhookMessage.Status.set -> void
+Caliber.Webhooks.WebhookMessage.WebhookMessage() -> void
+Caliber.Webhooks.WebhookSecret
+Microsoft.Extensions.DependencyInjection.CaliberWebhooksServiceCollectionExtensions
+const Caliber.Webhooks.CaliberWebhooks.DiagnosticsName = "Caliber.Webhooks" -> string!
+static Caliber.Webhooks.RetrySchedule.Default.get -> Caliber.Webhooks.RetrySchedule!
+static Caliber.Webhooks.RetrySchedule.FromDelays(params System.TimeSpan[]! delays) -> Caliber.Webhooks.RetrySchedule!
+static Caliber.Webhooks.WebhookSecret.Generate() -> string!
+static Microsoft.Extensions.DependencyInjection.CaliberWebhooksServiceCollectionExtensions.AddCaliberWebhooks(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Microsoft.Extensions.DependencyInjection.CaliberWebhooksServiceCollectionExtensions.AddCaliberWebhooks(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Caliber.Webhooks.CaliberWebhooksOptions!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

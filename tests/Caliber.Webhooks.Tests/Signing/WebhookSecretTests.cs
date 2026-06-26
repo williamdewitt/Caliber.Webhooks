@@ -38,4 +38,14 @@ public sealed class WebhookSecretTests
         act.Should().Throw<ArgumentException>()
             .Which.Message.Should().NotContain("SECRETMARKER");
     }
+
+    [Fact]
+    public void DecodeKey_rejects_invalid_base64_with_the_expected_message()
+    {
+        var act = () => WebhookSecret.DecodeKey("whsec_!!!notbase64!!!");
+
+        var exception = act.Should().Throw<ArgumentException>().Which;
+        exception.ParamName.Should().Be("secret");
+        exception.Message.Should().StartWith("The endpoint secret is not valid base64.");
+    }
 }

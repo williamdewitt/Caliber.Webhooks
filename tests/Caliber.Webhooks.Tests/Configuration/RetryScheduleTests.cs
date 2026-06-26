@@ -43,11 +43,30 @@ public sealed class RetryScheduleTests
     }
 
     [Fact]
+    public void FromDelays_rejects_null()
+    {
+        var act = () => RetrySchedule.FromDelays(null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Which.ParamName.Should().Be("delays");
+    }
+
+    [Fact]
     public void FromDelays_rejects_an_empty_schedule()
     {
         var act = () => RetrySchedule.FromDelays();
 
-        act.Should().Throw<ArgumentException>();
+        var exception = act.Should().Throw<ArgumentException>().Which;
+        exception.ParamName.Should().Be("delays");
+        exception.Message.Should().StartWith("A retry schedule needs at least one delay.");
+    }
+
+    [Fact]
+    public void FromDelays_accepts_zero_delay()
+    {
+        var schedule = RetrySchedule.FromDelays(TimeSpan.Zero);
+
+        schedule.Delays.Should().Equal(TimeSpan.Zero);
     }
 
     [Fact]
@@ -55,6 +74,8 @@ public sealed class RetryScheduleTests
     {
         var act = () => RetrySchedule.FromDelays(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(-1));
 
-        act.Should().Throw<ArgumentException>();
+        var exception = act.Should().Throw<ArgumentException>().Which;
+        exception.ParamName.Should().Be("delays");
+        exception.Message.Should().StartWith("Retry delays must be non-negative.");
     }
 }

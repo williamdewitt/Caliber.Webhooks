@@ -71,6 +71,27 @@ public sealed class SigningEngineTests
     {
         var act = () => EngineAt(VectorTime).Sign(Guid.NewGuid(), Payload, secret!);
 
-        act.Should().Throw<ArgumentException>();
+        act.Should().Throw<ArgumentException>()
+            .Which.ParamName.Should().Be("secret");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(null)]
+    public void Sign_rejects_a_null_or_empty_webhook_id(string? webhookId)
+    {
+        var act = () => EngineAt(VectorTime).Sign(webhookId!, Payload, Secret);
+
+        act.Should().Throw<ArgumentException>()
+            .Which.ParamName.Should().Be("webhookId");
+    }
+
+    [Fact]
+    public void Sign_rejects_null_payload()
+    {
+        var act = () => EngineAt(VectorTime).Sign("any-id", null!, Secret);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Which.ParamName.Should().Be("payload");
     }
 }

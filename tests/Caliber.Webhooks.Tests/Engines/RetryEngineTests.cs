@@ -71,6 +71,16 @@ public sealed class RetryEngineTests
 
         var act = () => engine.Next(attemptsMade);
 
-        act.Should().Throw<ArgumentOutOfRangeException>();
+        act.Should().Throw<ArgumentOutOfRangeException>()
+            .Which.ParamName.Should().Be("attemptsMade");
+    }
+
+    [Fact]
+    public void Constructor_rejects_null_options()
+    {
+        var act = () => new RetryEngine(null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Which.ParamName.Should().Be("options");
     }
 }

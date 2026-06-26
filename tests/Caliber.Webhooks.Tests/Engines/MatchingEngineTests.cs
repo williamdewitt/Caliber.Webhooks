@@ -64,4 +64,22 @@ public sealed class MatchingEngineTests
 
         engine.Match("order.shipped", [endpoint]).Should().ContainSingle();
     }
+
+    [Fact]
+    public void Match_rejects_null_event_type()
+    {
+        var act = () => new MatchingEngine().Match(null!, []);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Which.ParamName.Should().Be("eventType");
+    }
+
+    [Fact]
+    public void Match_rejects_null_endpoints()
+    {
+        var act = () => new MatchingEngine().Match("order.shipped", null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Which.ParamName.Should().Be("endpoints");
+    }
 }

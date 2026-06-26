@@ -71,6 +71,7 @@ internal sealed class SigningEngine
         }
         finally
         {
+            // Stryker disable once Statement : equivalent — defensive key wipe, no observable effect
             CryptographicOperations.ZeroMemory(key);
         }
     }

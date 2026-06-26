@@ -68,4 +68,29 @@ public sealed class InMemoryEndpointStoreTests
 
         listed.Should().ContainSingle().Which.Id.Should().Be(enabled.Id);
     }
+
+    [Fact]
+    public async Task UpsertAsync_rejects_null_endpoint()
+    {
+        var store = new InMemoryEndpointStore();
+
+        Func<Task> act = async () => await store.UpsertAsync(null!);
+
+        (await act.Should().ThrowAsync<ArgumentNullException>())
+            .Which.ParamName.Should().Be("endpoint");
+    }
+
+    [Fact]
+    public async Task DisableAsync_on_already_disabled_endpoint_is_a_no_op()
+    {
+        var store = new InMemoryEndpointStore();
+        var id = Guid.NewGuid();
+        await store.UpsertAsync(MakeEndpoint(id));
+        await store.DisableAsync(id);
+        var afterFirstDisable = await store.GetAsync(id);
+
+        await store.DisableAsync(id);
+
+        (await store.GetAsync(id)).Should().BeSameAs(afterFirstDisable);
+    }
 }

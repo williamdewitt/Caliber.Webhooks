@@ -10,7 +10,7 @@ name: Classify & auto-merge
 #              (SSRF / signing / secret-at-rest)
 #   core     = anything under src/Caliber.Webhooks/, OR any .github/workflows/**
 #              change (CI privilege / secret surface — human-gated, never auto-merged)
-#   low      = tests / samples only
+#   low      = tests / samples / benchmarks only
 #   trivial  = docs / markdown / .github *config* (issue templates, dependabot,
 #              release-drafter) / editor & repo config — but NOT .github/workflows/**
 #
@@ -58,7 +58,7 @@ jobs:
             // bumps to workflows still auto-merge via dependabot-auto-merge.yml, which
             // is actor-gated (trusted bot, patch only), not path-gated.
             const isWorkflow = paths.some(p => p.startsWith('.github/workflows/'));
-            const isLow = paths.some(p => p.startsWith('tests/') || p.startsWith('samples/'));
+            const isLow = paths.some(p => p.startsWith('tests/') || p.startsWith('samples/') || p.startsWith('benchmarks/'));
             const allTrivial = paths.length > 0 && paths.every(p =>
               p.startsWith('docs/') ||
               (p.startsWith('.github/') && !p.startsWith('.github/workflows/')) ||

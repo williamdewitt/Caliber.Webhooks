@@ -63,6 +63,13 @@ Two principles fall out of this table:
 
 First dogfood: **Dependabot patch auto-merge** exercises the whole *classify → CI green → auto-merge* path before the agent is ever pointed at it.
 
+## Quality gates beyond green CI
+
+Green tests prove the code does what the tests check; two further gates probe whether the tests and the code are any good.
+
+- **Mutation testing (Stryker.NET).** [`mutation.yml`](../../.github/workflows/mutation.yml) runs Stryker in two modes: a **diff-only gate** on PRs that touch `src/`/`tests/` (mutates just the changed code via `--since`, fails below the `break` threshold in [`stryker-config.json`](../../tests/Caliber.Webhooks.Tests/stryker-config.json)), and a **nightly/on-demand full run** that is report-only and publishes the HTML report as an artifact to track the overall score. It is intentionally **not** a branch-protection required check — a required check skipped by the `paths` filter would stall the trivial-docs auto-merge loop, and source PRs are `core`/`critical` (human-merged) anyway, so a visible ❌ is gate enough. **Enabler:** Stryker cannot mutate xUnit v3 under the legacy VSTest runner (it kills 0 mutants); the test project therefore runs on **Microsoft.Testing.Platform** (xUnit v3 is MTP-native) and Stryker is pointed at its **MTP runner** (`test-runner: mtp`). That runner is still marked *preview* in Stryker, but it is the only configuration in which xUnit v3 mutants are actually killed.
+- **Performance benchmarks (BenchmarkDotNet).** A `benchmarks/` harness with `[MemoryDiagnoser]` over the hot paths, compiled by CI (rot guard) and run on demand — not timing-gated, since shared runners are too noisy to assert on.
+
 ## Work selection — which issue, next
 
 "Ready" is an explicit state, not a guess. A dispatch step (scheduled or manually triggered) picks the top issue that is: in the current milestone, labeled `ready` (has acceptance criteria + definition-of-done), unblocked, highest priority. It then invokes the agent with the model + effort mapped from the issue's `risk:*` band. North-star mode is the same machinery with an epic decomposed into ready issues first.

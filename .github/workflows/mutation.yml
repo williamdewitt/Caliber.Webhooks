@@ -1,0 +1,95 @@
+name: Mutation testing
+
+# Stryker.NET mutation testing, in two modes:
+#   * On PRs that touch src/ or tests/ — a DIFF-ONLY gate: mutate only the code changed since the
+#     base branch and fail if its mutation score drops below the configured break threshold. This is
+#     deliberately NOT added to the branch-protection required checks — a required check skipped by
+#     the paths filter would stall the trivial-docs auto-merge loop, and the PRs that change src/tests
+#     are core/critical (human-merged) anyway, so a visible ❌ here is gate enough.
+#   * Nightly + on demand — a FULL run over the whole project, report-only (never fails the build),
+#     publishing the HTML report as an artifact so the overall score can be tracked over time.
+#
+# Stryker drives the suite through its Microsoft.Testing.Platform runner (test-runner: mtp in
+# stryker-config.json); the test project is MTP-native (xUnit v3), which is what makes mutants
+# actually get killed — Stryker cannot mutate xUnit v3 under the legacy VSTest runner.
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "tests/**"
+  schedule:
+    - cron: "0 4 * * *" # nightly full run
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  diff:
+    name: mutation (diff gate)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # Stryker --since needs history to diff against the base
+
+      - name: Setup .NET (8 + 10)
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore tools
+        run: dotnet tool restore
+
+      - name: Stryker (changed code only)
+        working-directory: tests/Caliber.Webhooks.Tests
+        run: dotnet stryker --since:${{ github.event.pull_request.base.sha }}
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mutation-report-diff
+          path: "**/StrykerOutput/**/reports/**"
+          if-no-files-found: ignore
+
+  full:
+    name: mutation (full report)
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET (8 + 10)
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore tools
+        run: dotnet tool restore
+
+      - name: Stryker (full project, report-only)
+        working-directory: tests/Caliber.Webhooks.Tests
+        run: dotnet stryker --break-at 0 # never fail the scheduled run; it only tracks the score
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mutation-report-full
+          path: "**/StrykerOutput/**/reports/**"
+          if-no-files-found: ignore

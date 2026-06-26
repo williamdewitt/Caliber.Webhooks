@@ -35,6 +35,7 @@ internal sealed class IngestionManager : IWebhookPublisher
 
         var enabled = await _endpoints.ListEnabledAsync(ct).ConfigureAwait(false);
         var matched = _matching.Match(eventType, enabled);
+        // Stryker disable once all : equivalent — fast-path return; with no matches the fan-out loop below produces nothing anyway.
         if (matched.Count == 0)
         {
             return;

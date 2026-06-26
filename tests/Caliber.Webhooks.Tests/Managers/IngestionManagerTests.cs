@@ -81,4 +81,26 @@ public sealed class IngestionManagerTests
 
         (await messages.ClaimDueAsync(10, Lease, "d")).Should().BeEmpty();
     }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(null)]
+    public async Task Publish_rejects_a_null_or_empty_event_type(string? eventType)
+    {
+        var (ingestion, _, _) = Build();
+
+        var act = async () => await ingestion.PublishAsync(eventType!, new { });
+
+        (await act.Should().ThrowAsync<ArgumentException>()).Which.ParamName.Should().Be("eventType");
+    }
+
+    [Fact]
+    public async Task Publish_rejects_a_null_payload()
+    {
+        var (ingestion, _, _) = Build();
+
+        var act = async () => await ingestion.PublishAsync("order.shipped", null!);
+
+        (await act.Should().ThrowAsync<ArgumentNullException>()).Which.ParamName.Should().Be("payload");
+    }
 }

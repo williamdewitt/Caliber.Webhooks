@@ -19,6 +19,30 @@ public sealed class DeliveryManagerTests
         }
     }
 
+    // Wraps a real store, capturing the owner the manager claims with — proves the configured claim
+    // token (not a fresh random one) is used, which is what keeps multiple dispatchers disjoint.
+    private sealed class OwnerCapturingStore(IMessageStore inner) : IMessageStore
+    {
+        public string? LastOwner { get; private set; }
+
+        public Task<int> AddAsync(IReadOnlyCollection<WebhookMessage> messages, CancellationToken ct = default)
+            => inner.AddAsync(messages, ct);
+
+        public Task<IReadOnlyList<WebhookMessage>> ClaimDueAsync(int batchSize, TimeSpan lease, string owner, CancellationToken ct = default)
+        {
+            LastOwner = owner;
+            return inner.ClaimDueAsync(batchSize, lease, owner, ct);
+        }
+
+        public Task MarkDeliveredAsync(Guid messageId, CancellationToken ct = default) => inner.MarkDeliveredAsync(messageId, ct);
+
+        public Task RescheduleAsync(Guid messageId, int attemptCount, DateTimeOffset nextAttemptAt, string error, CancellationToken ct = default)
+            => inner.RescheduleAsync(messageId, attemptCount, nextAttemptAt, error, ct);
+
+        public Task DeadLetterAsync(Guid messageId, int attemptCount, string error, CancellationToken ct = default)
+            => inner.DeadLetterAsync(messageId, attemptCount, error, ct);
+    }
+
     private sealed record Harness(
         DeliveryManager Manager,
         InMemoryMessageStore Messages,
@@ -143,5 +167,78 @@ public sealed class DeliveryManagerTests
         h.Channel.Sent.Should().HaveCount(2);
         h.Channel.Sent.Select(s => s.Id).Distinct(StringComparer.Ordinal).Should().ContainSingle()
             .Which.Should().Be(message.Id.ToString());
+    }
+
+    [Fact]
+    public async Task With_no_due_messages_it_delivers_nothing()
+    {
+        var h = await BuildAsync(_ => new DeliveryResult(true, 200, null));
+
+        var count = await h.Manager.DeliverDueAsync();
+
+        count.Should().Be(0);
+        h.Channel.Sent.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task A_successful_delivery_does_not_reschedule_or_dead_letter()
+    {
+        var h = await BuildAsync(_ => new DeliveryResult(true, 200, null));
+        var message = await EnqueueAsync(h);
+
+        await h.Manager.DeliverDueAsync();
+
+        message.Status.Should().Be(DeliveryStatus.Delivered);
+        message.AttemptCount.Should().Be(0);
+        message.NextAttemptAt.Should().Be(Now);
+        message.LastError.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task The_configured_owner_is_used_as_the_claim_token()
+    {
+        var clock = new FakeTimeProvider(Now);
+        var options = new CaliberWebhooksOptions { TimeProvider = clock };
+        var spy = new OwnerCapturingStore(new InMemoryMessageStore(clock));
+        var endpoints = new InMemoryEndpointStore();
+        var manager = new DeliveryManager(
+            spy, endpoints, new SigningEngine(clock), new RetryEngine(options, () => 0.5),
+            new FakeDeliveryChannel(_ => new DeliveryResult(true, 200, null)), options, owner: "dispatcher-A");
+
+        await manager.DeliverDueAsync();
+
+        spy.LastOwner.Should().Be("dispatcher-A");
+    }
+
+    [Fact]
+    public async Task A_batch_larger_than_the_concurrency_limit_is_fully_delivered()
+    {
+        // MaxConcurrency = 1 forces every delivery through the same semaphore permit; if the permit is
+        // not released after each send the second claim would block forever, so a full drain proves it is.
+        var clock = new FakeTimeProvider(Now);
+        var options = new CaliberWebhooksOptions { TimeProvider = clock, MaxConcurrency = 1 };
+        var messages = new InMemoryMessageStore(clock);
+        var endpoints = new InMemoryEndpointStore();
+        var endpoint = new Endpoint { Id = Guid.NewGuid(), Url = "https://acme.example/hooks", Secret = WebhookSecret.Generate() };
+        await endpoints.UpsertAsync(endpoint);
+        var manager = new DeliveryManager(
+            messages, endpoints, new SigningEngine(clock), new RetryEngine(options, () => 0.5),
+            new FakeDeliveryChannel(_ => new DeliveryResult(true, 200, null)), options, owner: "t");
+        var jobs = Enumerable.Range(0, 3).Select(_ => new WebhookMessage
+        {
+            Id = Guid.NewGuid(),
+            EventId = Guid.NewGuid(),
+            EndpointId = endpoint.Id,
+            EventType = "order.shipped",
+            Payload = "{}",
+            CreatedAt = Now,
+            NextAttemptAt = Now,
+        }).ToArray();
+        await messages.AddAsync(jobs);
+
+        var count = await manager.DeliverDueAsync();
+
+        count.Should().Be(3);
+        jobs.Should().AllSatisfy(j => j.Status.Should().Be(DeliveryStatus.Delivered));
     }
 }

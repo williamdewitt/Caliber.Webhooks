@@ -75,6 +75,7 @@ internal sealed class InMemoryMessageStore : IMessageStore
             if (_byId.TryGetValue(messageId, out var message))
             {
                 message.Status = DeliveryStatus.Delivered;
+                // Stryker disable once all : equivalent — a Delivered message is terminal and never re-claimed, so releasing its lease has no observable effect.
                 ReleaseLease(message);
             }
         }
@@ -109,6 +110,7 @@ internal sealed class InMemoryMessageStore : IMessageStore
                 message.Status = DeliveryStatus.DeadLettered;
                 message.AttemptCount = attemptCount;
                 message.LastError = error;
+                // Stryker disable once all : equivalent — a DeadLettered message is terminal and never re-claimed, so releasing its lease has no observable effect.
                 ReleaseLease(message);
             }
         }

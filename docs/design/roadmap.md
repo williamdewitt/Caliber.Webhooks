@@ -69,8 +69,13 @@ All of the below sit behind seams the v1 design already exposes, so none is a br
 - **History:** persisted `attempts` table (durable audit beyond OTel retention).
 - **Ordering:** per-subscription ordering.
 
+## Second artifact (dogfood)
+
+Alongside the library, a **webhook sink + delivery test harness** is incubated in-repo (`samples/WebhookSink` + `src/Caliber.Webhooks.Testing`) and dogfoods the M1 delivery loop. It is extracted to its own repository once concrete. Design + slice plan: [WebhookSink + Caliber.Webhooks.Testing](./webhook-sink-design.md).
+
 ## See also
 
 - [Decisions](./decisions.md) — what each milestone implements and why.
 - [Public API](../reference/public-api.md) — the surface M1–M4 build toward.
 - [Architecture](../concepts/architecture.md) — the components named in the milestones.
+- [WebhookSink design](./webhook-sink-design.md) — the second artifact that proves the loop.

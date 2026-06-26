@@ -8,4 +8,7 @@
   <Folder Name="/benchmarks/">
     <Project Path="benchmarks/Caliber.Webhooks.Benchmarks/Caliber.Webhooks.Benchmarks.csproj" />
   </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/WebhookSink/WebhookSink.csproj" />
+  </Folder>
 </Solution>

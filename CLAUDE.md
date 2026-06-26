@@ -19,6 +19,10 @@ The full capability → flow mapping is **[docs/design/dotnet-claude-kit-adoptio
 - **OTel attempt history (#3):** the `opentelemetry` skill.
 - **Navigation & quality, always (local):** the Roslyn MCP tools — `get_public_api` (we ship `PublicAPI.*.txt` — a critical surface), `detect_antipatterns`, `detect_circular_dependencies`, `find_references`. (Deferred in CI — see [#29](https://github.com/williamdewitt/Caliber.Webhooks/issues/29).)
 
+## Sizing work for the agent loop
+
+The in-CI `@claude` agent ([`claude.yml`](.github/workflows/claude.yml)) runs under a **turn cap** (`--max-turns`): a slice needing more steps than the cap fails with `error_max_turns` having pushed nothing. So **size every agent issue to one run — one project or one concern.** Work spanning two projects (e.g. an app *and* its test project) or two concerns gets **split into sequential issues** (the later one `blocked` by the earlier), never bundled. Smaller is the default here anyway: more reliable runs, faster review, tighter per-PR blast radius. Every `ready`+`agent` issue carries explicit **acceptance criteria + definition of done** — that's what lets the agent finish inside the budget without open-ended exploration. (Worked example: the S0 scaffold split into S0a app + S0b smoke-test after the bundled version hit the cap.)
+
 ## House overrides — these WIN over kit defaults
 
 The kit is opinionated, and several defaults collide with decisions already bedded down in `docs/design/`. Where they collide, **ours win** — do not let a kit rule or skill silently override:

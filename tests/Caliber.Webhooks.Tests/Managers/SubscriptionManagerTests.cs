@@ -47,6 +47,22 @@ public sealed class SubscriptionManagerTests
     }
 
     [Fact]
+    public async Task CreateAsync_rejects_a_null_endpoint()
+    {
+        var manager = new SubscriptionManager(new InMemoryEndpointStore());
+        var act = async () => await manager.CreateAsync(null!);
+        (await act.Should().ThrowAsync<ArgumentNullException>()).Which.ParamName.Should().Be("endpoint");
+    }
+
+    [Fact]
+    public async Task UpdateAsync_rejects_a_null_endpoint()
+    {
+        var manager = new SubscriptionManager(new InMemoryEndpointStore());
+        var act = async () => await manager.UpdateAsync(null!);
+        (await act.Should().ThrowAsync<ArgumentNullException>()).Which.ParamName.Should().Be("endpoint");
+    }
+
+    [Fact]
     public async Task DisableAsync_disables_the_endpoint()
     {
         var store = new InMemoryEndpointStore();

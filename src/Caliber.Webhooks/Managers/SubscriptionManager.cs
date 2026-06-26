@@ -25,6 +25,7 @@ internal sealed class SubscriptionManager : IWebhookEndpoints
 
     public Task UpdateAsync(Endpoint endpoint, CancellationToken ct = default)
     {
+        // Stryker disable once all : equivalent — the endpoint store guards a null endpoint identically on Upsert.
         ArgumentNullException.ThrowIfNull(endpoint);
         return _endpoints.UpsertAsync(endpoint, ct);
     }

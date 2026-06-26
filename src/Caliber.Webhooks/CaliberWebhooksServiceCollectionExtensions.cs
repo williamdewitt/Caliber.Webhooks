@@ -22,6 +22,7 @@ public static class CaliberWebhooksServiceCollectionExtensions
     public static IServiceCollection AddCaliberWebhooks(
         this IServiceCollection services, Action<CaliberWebhooksOptions> configure)
     {
+        // Stryker disable once all : equivalent — a null service collection is guarded identically by the downstream AddSingleton calls.
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
 

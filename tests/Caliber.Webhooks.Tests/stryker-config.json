@@ -4,6 +4,9 @@
     "target-framework": "net10.0",
     "test-runner": "mtp",
     "mutation-level": "Standard",
+    "ignore-methods": [
+      "ConfigureAwait"
+    ],
     "thresholds": {
       "high": 80,
       "low": 60,

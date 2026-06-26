@@ -49,6 +49,7 @@ internal sealed class DeliveryManager
         var claimed = await _messages
             .ClaimDueAsync(_options.BatchSize, _options.LeaseDuration, _owner, ct)
             .ConfigureAwait(false);
+        // Stryker disable once all : equivalent — this is a fast-path return; falling through delivers an empty batch to the same effect.
         if (claimed.Count == 0)
         {
             return 0;

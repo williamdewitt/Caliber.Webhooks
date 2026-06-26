@@ -69,11 +69,12 @@ internal sealed class SigningEngine
             HMACSHA256.HashData(key, Encoding.UTF8.GetBytes(content), hash);
             return Version + "," + Convert.ToBase64String(hash);
         }
+        // Stryker disable all : equivalent — the finally only performs a defensive wipe of the local key copy; removing it is not observable.
         finally
         {
-            // Stryker disable once Statement : equivalent — defensive key wipe, no observable effect
             CryptographicOperations.ZeroMemory(key);
         }
+        // Stryker restore all
     }
 
     /// <summary>

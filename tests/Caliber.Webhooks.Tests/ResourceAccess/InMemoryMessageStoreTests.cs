@@ -165,4 +165,43 @@ public sealed class InMemoryMessageStoreTests
         claimedIds.Should().HaveCount(200);
         claimedIds.Should().OnlyHaveUniqueItems();
     }
+
+    [Fact]
+    public async Task AddAsync_rejects_null_messages()
+    {
+        var store = new InMemoryMessageStore(new FakeTimeProvider(Now));
+        var act = async () => await store.AddAsync(null!);
+        (await act.Should().ThrowAsync<ArgumentNullException>()).Which.ParamName.Should().Be("messages");
+    }
+
+    [Fact]
+    public async Task ClaimDueAsync_rejects_a_non_positive_batch_size()
+    {
+        var store = new InMemoryMessageStore(new FakeTimeProvider(Now));
+        var act = async () => await store.ClaimDueAsync(0, Lease, "d1");
+        await act.Should().ThrowAsync<ArgumentOutOfRangeException>();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(null)]
+    public async Task ClaimDueAsync_rejects_a_null_or_empty_owner(string? owner)
+    {
+        var store = new InMemoryMessageStore(new FakeTimeProvider(Now));
+        var act = async () => await store.ClaimDueAsync(10, Lease, owner!);
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task ClaimDueAsync_does_not_reclaim_at_the_exact_moment_the_lease_expires()
+    {
+        var clock = new FakeTimeProvider(Now);
+        var store = new InMemoryMessageStore(clock);
+        await store.AddAsync([Message(Now)]);
+        await store.ClaimDueAsync(10, Lease, "d1");
+
+        clock.Advance(Lease); // now == LeaseUntil exactly — the lease has not yet lapsed
+
+        (await store.ClaimDueAsync(10, Lease, "d2")).Should().BeEmpty();
+    }
 }

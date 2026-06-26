@@ -38,3 +38,14 @@ dotnet_diagnostic.CA1515.severity = none
 dotnet_diagnostic.xUnit1051.severity = none
 # MA0004: ConfigureAwait(false) is unnecessary in xUnit v3 tests (no sync context); library code still honours it
 dotnet_diagnostic.MA0004.severity = none
+
+# Benchmark project: BenchmarkDotNet dictates the shape — relax the rules that fight it
+[benchmarks/**.cs]
+# CA1515: BenchmarkDotNet discovers benchmark classes by reflection — they must be public
+dotnet_diagnostic.CA1515.severity = none
+# CA1822: [Benchmark] methods must be instance methods; they cannot be marked static
+dotnet_diagnostic.CA1822.severity = none
+# CA1051: [Params]/[GlobalSetup] state is exposed as the harness requires
+dotnet_diagnostic.CA1051.severity = none
+# MA0004: ConfigureAwait(false) is unnecessary in the benchmark host (no sync context)
+dotnet_diagnostic.MA0004.severity = none

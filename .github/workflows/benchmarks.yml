@@ -1,0 +1,48 @@
+name: Benchmarks
+
+# On-demand performance harness. Deliberately NOT part of the merge gate — wall-clock timings on
+# shared CI runners are too noisy to assert on. The benchmark project is compiled by the normal CI
+# build (it's in the solution), which guards it against rot; this workflow exists to capture a
+# BenchmarkDotNet report as a downloadable artifact when you want fresh numbers.
+
+on:
+  workflow_dispatch:
+    inputs:
+      filter:
+        description: "BenchmarkDotNet filter (glob), e.g. *Signing* — defaults to all"
+        required: false
+        default: "*"
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    name: run benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # MinVer needs full history + tags for versioning
+
+      - name: Setup .NET (8 + 10)
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Run benchmarks (net10.0)
+        run: >-
+          dotnet run -c Release -f net10.0
+          --project benchmarks/Caliber.Webhooks.Benchmarks
+          -- --filter '${{ inputs.filter }}'
+
+      - name: Upload BenchmarkDotNet report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: benchmark-results
+          path: "**/BenchmarkDotNet.Artifacts/**"
+          if-no-files-found: warn

@@ -95,7 +95,7 @@ Caliber.Webhooks handles the **external edge** — pushing to third-party HTTP e
 
 ## Tech stack
 
-C# / **.NET 8 + .NET 10** (multi-target) · `IHttpClientFactory` · `BackgroundService` · `System.Text.Json` · OpenTelemetry via BCL `ActivitySource`/`Meter` · stores: in-memory + SQLite + Postgres (v1). Built with MinVer, SourceLink, deterministic builds, and Central Package Management; tested with xUnit v3, WireMock.Net, and Testcontainers.
+C# / **.NET 8 + .NET 10** (multi-target) · `IHttpClientFactory` · `BackgroundService` · `System.Text.Json` · OpenTelemetry via BCL `ActivitySource`/`Meter` · stores: in-memory + SQLite + Postgres (v1). Built with MinVer, SourceLink, deterministic builds, and Central Package Management; tested with xUnit v3, WireMock.Net, and Testcontainers; the hot paths are benchmarked with [BenchmarkDotNet](./benchmarks/README.md).
 
 ## License
 

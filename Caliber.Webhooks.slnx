@@ -5,4 +5,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/Caliber.Webhooks.Tests/Caliber.Webhooks.Tests.csproj" />
   </Folder>
+  <Folder Name="/benchmarks/">
+    <Project Path="benchmarks/Caliber.Webhooks.Benchmarks/Caliber.Webhooks.Benchmarks.csproj" />
+  </Folder>
 </Solution>

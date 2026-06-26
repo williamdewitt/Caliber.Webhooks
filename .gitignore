@@ -4,6 +4,12 @@
 [Oo]ut/
 artifacts/
 
+# BenchmarkDotNet output (generated reports — captured as CI artifacts, never committed)
+BenchmarkDotNet.Artifacts/
+
+# Stryker mutation-testing output
+StrykerOutput/
+
 # Test results & coverage
 [Tt]est[Rr]esults/
 *.coverage

@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection;
+
 namespace Caliber.Webhooks;
 
 /// <summary>
@@ -65,4 +67,10 @@ public sealed class CaliberWebhooksOptions
     /// is the system clock (<see cref="System.TimeProvider"/>).
     /// </summary>
     public TimeProvider TimeProvider { get; set; } = TimeProvider.System;
+
+    /// <summary>
+    /// When set by a storage-provider package (e.g. <c>UseSqlite</c>), replaces the default in-memory
+    /// store registration inside <c>AddCaliberWebhooks</c>. Internal so only Caliber packages can touch it.
+    /// </summary>
+    internal Action<IServiceCollection>? StoreConfigurator { get; set; }
 }

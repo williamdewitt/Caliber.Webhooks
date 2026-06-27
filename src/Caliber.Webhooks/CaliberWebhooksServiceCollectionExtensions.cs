@@ -31,8 +31,17 @@ public static class CaliberWebhooksServiceCollectionExtensions
         Validate(options);
 
         services.AddSingleton(options);
-        services.AddSingleton<IMessageStore>(_ => new InMemoryMessageStore(options.TimeProvider));
-        services.AddSingleton<IEndpointStore, InMemoryEndpointStore>();
+
+        if (options.StoreConfigurator is { } configureStores)
+        {
+            configureStores(services);
+        }
+        else
+        {
+            services.AddSingleton<IMessageStore>(_ => new InMemoryMessageStore(options.TimeProvider));
+            services.AddSingleton<IEndpointStore, InMemoryEndpointStore>();
+        }
+
         services.AddSingleton(_ => new MatchingEngine());
         services.AddSingleton(_ => new SigningEngine(options.TimeProvider));
         services.AddSingleton(_ => new RetryEngine(options));

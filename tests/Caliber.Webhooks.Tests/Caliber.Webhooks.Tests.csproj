@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Caliber.Webhooks/Caliber.Webhooks.csproj" />
+    <ProjectReference Include="../../src/Caliber.Webhooks.EntityFrameworkCore/Caliber.Webhooks.EntityFrameworkCore.csproj" />
   </ItemGroup>
 
   <ItemGroup>

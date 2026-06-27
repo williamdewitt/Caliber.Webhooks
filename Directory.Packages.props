@@ -13,12 +13,35 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.4" />
   </ItemGroup>
 
-  <!-- Runtime dependencies (pinned to the net8 floor; net10 consumers unify upward) -->
+  <!--
+    Runtime dependencies (pinned to the net8 floor; net10 consumers unify upward).
+    DependencyInjection.Abstractions and Logging.Abstractions are 8.0.2 — the real floor the graph
+    already requires (Microsoft.Extensions.Http 8.0.0 -> Logging 8.0.1 -> *.Abstractions >= 8.0.2).
+    The core project masked this by referencing them directly (authoritative); provider projects that
+    pull them only transitively need the pin to match, or transitive pinning trips NU1109.
+  -->
   <ItemGroup>
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="8.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+
+  <!--
+    EF Core provider (Caliber.Webhooks.EntityFrameworkCore). Pinned to EF Core 8 — the net8 floor,
+    same policy as the runtime dependencies above: EF 8's transitive Microsoft.Extensions.* deps sit
+    at 8.0.0 (matching the pins above, so CentralPackageTransitivePinningEnabled stays conflict-free),
+    it is LTS-supported, and runs unchanged on the net10 target. Pinning EF Core 10 instead would drag
+    its transitives to 10.x and collide with the 8.0.0 pins under transitive pinning (NU1605).
+  -->
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.28" />
+    <!--
+      Bump the native SQLite bundle above EF 8's transitive 2.1.6, which carries a known high-severity
+      advisory (GHSA-2m69-gcr7-jv3q / NU1903). 2.1.11 is the current patched release; transitive
+      pinning flows it to SQLitePCLRaw.lib.e_sqlite3.
+    -->
+    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.11" />
   </ItemGroup>
 
   <!-- Performance benchmarks (developer harness, not shipped) -->

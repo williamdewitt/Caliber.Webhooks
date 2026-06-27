@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+
+    <IsPackable>true</IsPackable>
+    <PackageId>Caliber.Webhooks.EntityFrameworkCore</PackageId>
+    <Description>Durable EF Core (SQLite) storage provider for Caliber.Webhooks — the messages and endpoints schema, ensure-created for the zero-infra single-node path. Keeps the core package dependency-free; opt in with UseSqlite(...). Pre-release; the public API is the target surface and not yet shipped.</Description>
+    <PackageTags>webhooks;delivery;standard-webhooks;efcore;sqlite;storage;dotnet</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Caliber.Webhooks/Caliber.Webhooks.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MinVer" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The DbContext + entity configurations are internal; tests reach them directly. -->
+    <InternalsVisibleTo Include="Caliber.Webhooks.Tests" />
+  </ItemGroup>
+
+</Project>

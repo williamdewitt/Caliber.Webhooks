@@ -39,4 +39,19 @@
     <PackageReference Include="Meziantou.Analyzer" PrivateAssets="all" />
   </ItemGroup>
 
+  <!--
+    NuGet audit suppression — assessed and accepted, not blanket-disabled.
+    CVE-2025-6965 (GHSA-2m69-gcr7-jv3q, High): a memory-corruption bug in the native SQLite engine
+    (< 3.50.2) bundled by SQLitePCLRaw.lib.e_sqlite3. It affects ALL published SQLitePCLRaw versions
+    (<= 2.1.11) and has NO fixed release yet — there is nothing to upgrade to. The bug is reachable
+    only via attacker-controlled SQL (a crafted aggregate query); Caliber.Webhooks' SQLite store runs
+    only EF Core-generated SQL with event/endpoint data bound as parameters — never SQL text — so the
+    exploit precondition is absent in this usage. Reachable transitively wherever the EF Core provider
+    is referenced (the provider and the test project), hence repo-wide.
+    REVISIT: remove this the moment SQLitePCLRaw ships a build bundling SQLite >= 3.50.2, and bump.
+  -->
+  <ItemGroup>
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-2m69-gcr7-jv3q" />
+  </ItemGroup>
+
 </Project>

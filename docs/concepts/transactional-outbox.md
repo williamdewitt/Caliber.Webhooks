@@ -31,10 +31,10 @@ await db.SaveChangesAsync();   // ONE transaction: business data + outbox row
 
 ## The relay — outbox → `messages`, idempotently
 
-A background **relay** drains committed outbox rows into Caliber.Webhooks' own `messages` store, **fanning out** each event to its matching endpoints; the dispatcher then claims from `messages` exactly as for any other store.
+A background **relay** drains committed outbox rows into Caliber.Webhooks' own `messages` store, **fanning out** each event to its matching endpoints (the endpoint set as of relay time); the dispatcher then claims from `messages` exactly as for any other store.
 
-- On relational stores the relay step (**insert `messages` rows + delete the outbox row**) runs in a **single transaction**.
-- It is **idempotent on the stable source event id**, so a relay crash mid-batch never double-enqueues and never loses a row.
+- The relay **inserts the fan-out idempotently** — one `messages` row per matching endpoint, unique on `(event_id, endpoint_id)` — and then **deletes the drained outbox rows**.
+- Crash-safety rests on that idempotency, **keyed on the stable source event id** (the outbox row id): if the relay inserts the deliveries but crashes before deleting the outbox row, the retry re-fans-out, the inserts no-op against the unique index, and the rows clear on the next pass — never double-enqueued, never lost.
 
 The relay was chosen over claiming directly from the shared table so your `AppDbContext` carries only a **thin, stable outbox table**, while Caliber.Webhooks **owns and evolves** the `messages`/`endpoints` schema independently. The cost is one extra hop plus the relay worker — bought back by clean schema separation. Fan-out and the two ids involved are detailed in [Endpoints & matching](./endpoints-and-matching.md).
 

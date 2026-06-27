@@ -1,4 +1,6 @@
 using AwesomeAssertions;
+using Caliber.Webhooks.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -141,4 +143,62 @@ public sealed class CaliberWebhooksServiceCollectionExtensionsTests
             o.LeaseDuration = TimeSpan.FromSeconds(2);
             o.HttpTimeout = TimeSpan.FromSeconds(1);
         });
+
+    // ── UseSqlite wiring ──────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void UseSqlite_registers_EfMessageStore_and_EfEndpointStore()
+    {
+        using var provider = new ServiceCollection()
+            .AddLogging()
+            .AddCaliberWebhooks(o => o.UseSqlite("Data Source=:memory:"))
+            .BuildServiceProvider();
+
+        provider.GetRequiredService<IMessageStore>().Should().BeOfType<EfMessageStore>();
+        provider.GetRequiredService<IEndpointStore>().Should().BeOfType<EfEndpointStore>();
+    }
+
+    [Fact]
+    public void UseSqlite_registers_IDbContextFactory()
+    {
+        using var provider = new ServiceCollection()
+            .AddLogging()
+            .AddCaliberWebhooks(o => o.UseSqlite("Data Source=:memory:"))
+            .BuildServiceProvider();
+
+        provider.GetService<IDbContextFactory<CaliberWebhooksDbContext>>().Should().NotBeNull();
+    }
+
+    [Fact]
+    public void UseSqlite_registers_the_schema_initializer_as_a_hosted_service()
+    {
+        using var provider = new ServiceCollection()
+            .AddLogging()
+            .AddCaliberWebhooks(o => o.UseSqlite("Data Source=:memory:"))
+            .BuildServiceProvider();
+
+        provider.GetServices<IHostedService>()
+            .Should().Contain(s => s is CaliberWebhooksSqliteInitializer);
+    }
+
+    [Fact]
+    public void UseSqlite_rejects_a_null_connection_string()
+    {
+        var act = () => new CaliberWebhooksOptions().UseSqlite(null!);
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void UseSqlite_rejects_a_whitespace_connection_string()
+    {
+        var act = () => new CaliberWebhooksOptions().UseSqlite("   ");
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void UseSqlite_rejects_a_null_options_instance()
+    {
+        var act = () => ((CaliberWebhooksOptions)null!).UseSqlite("Data Source=caliber.db");
+        act.Should().Throw<ArgumentNullException>().Which.ParamName.Should().Be("options");
+    }
 }

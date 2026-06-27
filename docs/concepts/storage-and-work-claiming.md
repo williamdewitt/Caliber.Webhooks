@@ -86,7 +86,7 @@ FROM due WHERE m.id=due.id RETURNING m.*;
 UPDATE due SET owner=@me, lease_until=@lease OUTPUT inserted.*;
 ```
 
-**SQLite** — serialized single-writer (WAL): `UPDATE … SET owner=@me, lease_until=@lease WHERE id IN (SELECT id … ORDER BY next_attempt_at LIMIT @batch)` then `SELECT … WHERE owner=@me`. Correct because SQLite serializes writers; fine for single-node / low concurrency.
+**SQLite** — serialized single-writer: one atomic `UPDATE … WHERE id IN (SELECT id … ORDER BY next_attempt_at LIMIT @batch) RETURNING *` claims and returns the batch in a single statement. SQLite serializes writers so a competing dispatcher's identical statement runs against the already-claimed state — no double-claim, no `SKIP LOCKED` needed. Fine for single-node / low concurrency.
 
 **In-memory** — in-process concurrent structure; single node, non-durable; tests/dev only.
 

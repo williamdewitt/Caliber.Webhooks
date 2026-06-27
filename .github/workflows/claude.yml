@@ -118,10 +118,14 @@ jobs:
             https://github.com/codewithmukesh/dotnet-claude-kit.git
           plugins: |
             dotnet-claude-kit@dotnet-claude-kit
-          # Risk-routed model + a turn cap so a runaway task can't burn the budget.
+          # Risk-routed model + a turn cap. 50 gives a well-sized slice (one project /
+          # one concern — see CLAUDE.md) headroom while still stopping a runaway task.
+          # A run that hits error_max_turns means the slice was too big: split the issue,
+          # don't just raise this — small slices are the design. The step below surfaces
+          # such a failure so it is not silent.
           claude_args: |
             --model ${{ steps.route.outputs.model }}
-            --max-turns 30
+            --max-turns 50
 
       # Make the loop hands-off. In tag mode the action pushes a branch but does
       # not open the PR (it leaves a "Create PR" link), so we open it. Crucially we
@@ -160,3 +164,23 @@ jobs:
             --title "$title" \
             --body "Automated by the agent-in-the-loop for #${ISSUE}. Closes #${ISSUE}."
           echo "Opened PR for $branch."
+
+      # Robustness: surface a failed run instead of failing silently. In the hands-off
+      # model nobody is watching the Actions tab, so on failure we comment the run link
+      # on the issue and flag it needs-triage. Posted with the default GITHUB_TOKEN — a
+      # notification, never a re-trigger: github-actions[bot] is excluded by the guard
+      # above and GITHUB_TOKEN-triggered runs are suppressed, so this cannot re-invoke
+      # the agent. error_max_turns here usually means the slice was too big (see CLAUDE.md).
+      - name: Surface a failed run
+        if: >-
+          failure() &&
+          (github.event_name == 'issues' ||
+           (github.event_name == 'issue_comment' && !github.event.issue.pull_request))
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh issue comment "$ISSUE" --repo "$REPO" --body "⚠️ The agent run for this issue failed — log: $RUN_URL — if it was a max-turns failure, the slice is likely too big for one run; split it into smaller sequential issues (see CLAUDE.md, 'Sizing work for the agent loop')." || true
+          gh issue edit "$ISSUE" --repo "$REPO" --add-label needs-triage || true

@@ -8,8 +8,10 @@ name: Classify & auto-merge
 # Precedence (highest blast radius wins): critical > core > low > trivial.
 #   critical = public API surface, EF migrations, or security-sensitive source
 #              (SSRF / signing / secret-at-rest)
-#   core     = anything under src/Caliber.Webhooks/, OR any .github/workflows/**
-#              change (CI privilege / secret surface — human-gated, never auto-merged)
+#   core     = any source project under src/ (the core lib AND sibling provider
+#              projects), the root build infra (Directory.*.props — repo-wide deps /
+#              analyzers), OR any .github/workflows/** change (CI privilege / secret
+#              surface — human-gated, never auto-merged)
 #   low      = tests / samples / benchmarks only
 #   trivial  = docs / markdown / .github *config* (issue templates, dependabot,
 #              release-drafter) / editor & repo config — but NOT .github/workflows/**
@@ -50,7 +52,16 @@ jobs:
               /(^|\/)Migrations\//.test(p) ||
               /(Ssrf|Signing|Signer|Secret)/i.test(p)
             );
-            const isCore = paths.some(p => p.startsWith('src/Caliber.Webhooks/'));
+            // Any source project — not just the core lib. Provider packages such as
+            // Caliber.Webhooks.EntityFrameworkCore live in sibling src/ folders, so match
+            // the whole src/ tree. Plus the root build infra (Directory.*.props) that sets
+            // dependency versions and analyzers repo-wide — a high-blast-radius surface.
+            const isCore = paths.some(p =>
+              p.startsWith('src/') ||
+              p === 'Directory.Build.props' ||
+              p === 'Directory.Packages.props' ||
+              p === 'Directory.Build.targets'
+            );
             // A workflow definition controls CI privileges and secret access — high
             // blast radius. It is NOT trivial even though it lives under .github/ and
             // ends in .yml; treat it as core so it never auto-merges and a human must

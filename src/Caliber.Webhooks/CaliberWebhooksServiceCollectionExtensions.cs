@@ -1,4 +1,5 @@
 using Caliber.Webhooks;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -50,7 +51,9 @@ public static class CaliberWebhooksServiceCollectionExtensions
         services.AddSingleton<IDeliveryChannel, HttpDeliveryChannel>();
 
         services.AddSingleton<DeliveryManager>();
-        services.AddSingleton<IWebhookPublisher, IngestionManager>();
+        // TryAdd: a storage provider's StoreConfigurator may already have registered an outbox-mode
+        // publisher (e.g. UseEntityFramework's scoped OutboxPublisher), which then wins over this default.
+        services.TryAddSingleton<IWebhookPublisher, IngestionManager>();
         services.AddSingleton<IWebhookEndpoints, SubscriptionManager>();
 
         services.AddHostedService<DispatcherHost>();

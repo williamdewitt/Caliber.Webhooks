@@ -12,6 +12,7 @@ namespace Caliber.Webhooks;
 public static class CaliberWebhooksEntityFrameworkOptionsExtensions
 {
     private const string SqliteProvider = "Microsoft.EntityFrameworkCore.Sqlite";
+    private const string NpgsqlProvider = "Npgsql.EntityFrameworkCore.PostgreSQL";
 
     /// <summary>
     /// Runs Caliber.Webhooks in <strong>transactional-outbox</strong> mode against the caller's
@@ -42,19 +43,7 @@ public static class CaliberWebhooksEntityFrameworkOptionsExtensions
             {
                 using var scope = sp.CreateScope();
                 var caller = scope.ServiceProvider.GetRequiredService<TContext>();
-                var provider = caller.Database.ProviderName;
-                var connectionString = caller.Database.GetConnectionString();
-
-                if (string.Equals(provider, SqliteProvider, StringComparison.Ordinal))
-                {
-                    builder.UseSqlite(connectionString);
-                }
-                else
-                {
-                    throw new NotSupportedException(
-                        $"Caliber.Webhooks outbox mode supports SQLite in v1; the '{provider}' provider arrives " +
-                        "with the durable Postgres store (issue #38).");
-                }
+                ConfigureForCallerProvider(builder, caller.Database.ProviderName, caller.Database.GetConnectionString());
             });
 
             services.AddSingleton<IMessageStore>(sp => new EfMessageStore(
@@ -67,10 +56,33 @@ public static class CaliberWebhooksEntityFrameworkOptionsExtensions
             services.AddScoped<IWebhookPublisher, OutboxPublisher<TContext>>();
 
             services.AddSingleton<RelayProcessor>();
+            // One initializer, provider-aware at runtime: it migrates on Postgres and create-tables-if-missing
+            // on SQLite (the provider isn't known here, only once TContext is resolved).
             services.AddHostedService<CaliberWebhooksSharedSchemaInitializer>();
             services.AddHostedService<RelayHost<TContext>>();
         };
 
         return options;
+    }
+
+    // Configures Caliber's own context to share the caller's database (same provider + connection). SQLite
+    // (zero-infra) and Postgres (production) are v1; another provider is an explicit, honest failure.
+    private static void ConfigureForCallerProvider(
+        DbContextOptionsBuilder builder, string? provider, string? connectionString)
+    {
+        if (string.Equals(provider, SqliteProvider, StringComparison.Ordinal))
+        {
+            builder.UseSqlite(connectionString);
+        }
+        else if (string.Equals(provider, NpgsqlProvider, StringComparison.Ordinal))
+        {
+            CaliberNpgsqlConfiguration.Apply(builder, connectionString);
+        }
+        else
+        {
+            throw new NotSupportedException(
+                $"Caliber.Webhooks outbox mode supports SQLite and PostgreSQL in v1; the '{provider}' " +
+                "provider is not supported.");
+        }
     }
 }

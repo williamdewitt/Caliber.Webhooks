@@ -36,6 +36,13 @@
   -->
   <ItemGroup>
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.28" />
+    <!-- Design-time only (PrivateAssets=all): used by `dotnet ef` to generate Caliber's shipped Postgres
+         migrations; never flows to consumers of the provider package. -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.28" />
+    <!-- Postgres provider, pinned to the EF Core 8 line (Npgsql EF 8.0.11 → Npgsql 8.0.x, EFCore.Relational
+         8.0.x), so it unifies with the Sqlite 8.0.28 pin under transitive pinning. The durable production
+         store; ships reviewed migrations and claims with FOR UPDATE SKIP LOCKED. -->
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.11" />
     <!--
       Bump the native SQLite bundle above EF 8's transitive 2.1.6, which carries a known high-severity
       advisory (GHSA-2m69-gcr7-jv3q / NU1903). 2.1.11 is the current patched release; transitive

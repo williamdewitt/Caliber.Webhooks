@@ -17,14 +17,15 @@
     Runtime dependencies (pinned to the net8 floor; net10 consumers unify upward).
     DependencyInjection.Abstractions is 8.0.2 — the real floor the graph already requires
     (Microsoft.Extensions.Http 8.0.0 -> Logging 8.0.1 -> *.Abstractions >= 8.0.2). Logging.Abstractions
-    is 8.0.3: the Testcontainers integration-test dependency requires >= 8.0.3, and transitive pinning
-    forces every consumer to match (still 8.0.x / the net8 LTS line). The core project references these
-    directly (authoritative); provider/test projects pull them transitively and need the pins to match
-    or transitive pinning trips NU1109.
+    is 8.0.3: the Testcontainers integration-test dependency requires >= 8.0.3. Hosting.Abstractions is
+    8.0.1: Microsoft.AspNetCore.Mvc.Testing 8.0.11 (the WebhookSink smoke-test host) pulls Hosting 8.0.1
+    -> Hosting.Abstractions >= 8.0.1. All still 8.0.x / the net8 LTS line, and transitive pinning forces
+    every consumer to match. The core project references these directly (authoritative); provider/test
+    projects pull them transitively and need the pins to match or transitive pinning trips NU1109.
   -->
   <ItemGroup>
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="8.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.3" />
   </ItemGroup>
@@ -65,6 +66,12 @@
     <PackageVersion Include="xunit.v3" Version="3.2.2" />
     <PackageVersion Include="AwesomeAssertions" Version="9.4.0" />
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.7.0" />
+    <!-- In-process test host for the WebhookSink sample (net10.0 only). Drives
+         WebApplicationFactory<Program> for the /healthz smoke test. Pinned to the net8 LTS
+         floor (house CPM policy): the 8.0.x line's transitive Microsoft.Extensions.*.Abstractions
+         unify with the runtime pins above, whereas the 10.x line drags those abstractions to 10.x
+         and downgrade-conflicts (NU1109) against the 8.0.x pins under transitive pinning. -->
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.11" />
     <!-- Spins a real Postgres in Docker to prove cross-instance no-double-send (FOR UPDATE SKIP LOCKED).
          Used only by Caliber.Webhooks.IntegrationTests, which skips itself unless CALIBER_INTEGRATION=1
          (set by the dedicated CI integration job); Docker is never spun on the fast PR path. -->

@@ -5,7 +5,7 @@ status: pre-release
 audience: [human, ai]
 tags: [caliber-webhooks, storage, work-claiming, lease, crash-recovery, postgres, sqlite]
 related: [./delivery-semantics.md, ./transactional-outbox.md, ./configuration.md, ../design/decisions.md]
-updated: 2026-06-22
+updated: 2026-06-28
 ---
 
 # Storage & Work-Claiming
@@ -91,6 +91,10 @@ UPDATE due SET owner=@me, lease_until=@lease OUTPUT inserted.*;
 **In-memory** — in-process concurrent structure; single node, non-durable; tests/dev only.
 
 **Redis** (roadmap) — `XREADGROUP` = claim, `XACK` = delivered, `XAUTOCLAIM` (min-idle-time) = lease/crash-recovery. Streams deliver immediately, so backoff uses a companion sorted set scored by `next_attempt_at`; a sweeper promotes due items into the stream.
+
+### Proven across instances
+
+The Postgres no-double-send guarantee is not a claim on paper — it is asserted against a **real Postgres** (spun via Testcontainers) by `tests/Caliber.Webhooks.IntegrationTests`: N concurrent dispatchers draining one shared backlog claim every message exactly once (`FOR UPDATE SKIP LOCKED`), a crashed dispatcher's expired lease is reclaimed and its work redelivered, concurrent fan-out of the same `(event_id, endpoint_id)` inserts exactly one row, and the outbox relay is idempotent across a mid-relay crash. The suite is Docker-required, so it runs in a dedicated CI job (`.github/workflows/integration.yml`) kept off the fast PR path — opt in locally with `CALIBER_INTEGRATION=1` and Docker running.
 
 ### Schema provisioning
 

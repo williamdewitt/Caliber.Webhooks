@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Deliberately NOT listed in Caliber.Webhooks.slnx. This Docker-required suite skips every test unless
+    CALIBER_INTEGRATION=1; inside the solution the fast path's `dotnet test` would then report "Zero tests
+    ran" (MTP exit 8) and fail. It is built and run on its own by .github/workflows/integration.yml (and
+    locally via `CALIBER_INTEGRATION=1 dotnet test` on this project) — never on the fast PR path.
+  -->
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- Run on Microsoft.Testing.Platform (xUnit v3 is MTP-native), same as the unit project. -->
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="AwesomeAssertions" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <!-- Spins a real Postgres in Docker. Gated behind CALIBER_INTEGRATION (see PostgresFixture); the
+         fast PR path never sets it, so no container is started there. -->
+    <PackageReference Include="Testcontainers.PostgreSql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Caliber.Webhooks/Caliber.Webhooks.csproj" />
+    <ProjectReference Include="../../src/Caliber.Webhooks.EntityFrameworkCore/Caliber.Webhooks.EntityFrameworkCore.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

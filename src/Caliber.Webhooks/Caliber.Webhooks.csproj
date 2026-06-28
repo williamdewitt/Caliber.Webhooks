@@ -31,6 +31,7 @@
   <ItemGroup>
     <!-- The iDesign engines / managers / resource-access are internal; tests and benchmarks reach them directly. -->
     <InternalsVisibleTo Include="Caliber.Webhooks.Tests" />
+    <InternalsVisibleTo Include="Caliber.Webhooks.IntegrationTests" />
     <InternalsVisibleTo Include="Caliber.Webhooks.Benchmarks" />
     <!-- The EF Core provider implements the internal IMessageStore / IEndpointStore resource-access contracts. -->
     <InternalsVisibleTo Include="Caliber.Webhooks.EntityFrameworkCore" />

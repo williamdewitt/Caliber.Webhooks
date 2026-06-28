@@ -34,6 +34,7 @@
   <ItemGroup>
     <!-- The DbContext + entity configurations are internal; tests reach them directly. -->
     <InternalsVisibleTo Include="Caliber.Webhooks.Tests" />
+    <InternalsVisibleTo Include="Caliber.Webhooks.IntegrationTests" />
   </ItemGroup>
 
 </Project>

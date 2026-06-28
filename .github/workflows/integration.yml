@@ -1,0 +1,55 @@
+name: Integration tests
+
+# Real-Postgres (Testcontainers) proof of cross-instance no-double-send for the durable store (#38/#39).
+# Docker-required, so it is deliberately kept OFF the fast PR path: it triggers only on PRs that touch the
+# storage code, on push to main, and nightly — and is NOT a branch-protection required check, so the
+# trivial/low auto-merge loop is never gated on Docker (same pattern as mutation.yml).
+#
+# Caliber.Webhooks.IntegrationTests is intentionally NOT in Caliber.Webhooks.slnx: a Docker-required suite
+# whose tests skip without CALIBER_INTEGRATION=1 would make the fast path's solution-wide `dotnet test`
+# fail with "Zero tests ran" (MTP exit 8). Keeping it out of the solution means the fast path never sees
+# it; this job builds and runs the project file directly, with the opt-in flag set.
+
+on:
+  pull_request:
+    paths:
+      - "src/Caliber.Webhooks/**"
+      - "src/Caliber.Webhooks.EntityFrameworkCore/**"
+      - "tests/Caliber.Webhooks.IntegrationTests/**"
+      - "Directory.Packages.props"
+      - ".github/workflows/integration.yml"
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: "30 4 * * *" # nightly, after the mutation full run
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integration:
+    name: integration (Postgres, Docker)
+    runs-on: ubuntu-latest # GitHub-hosted runners ship Docker, which Testcontainers drives
+    env:
+      CALIBER_INTEGRATION: "1" # opt the Testcontainers suite in (the only place this is set)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # MinVer needs full history + tags for versioning
+
+      - name: Setup .NET (8 + 10)
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      # The project is outside the solution, so build+run it directly (restores its project references).
+      - name: Integration tests (Postgres via Testcontainers, net8.0 + net10.0)
+        run: dotnet test tests/Caliber.Webhooks.IntegrationTests/Caliber.Webhooks.IntegrationTests.csproj --configuration Release --verbosity normal

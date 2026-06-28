@@ -5,9 +5,11 @@ using Microsoft.EntityFrameworkCore;
 namespace Caliber.Webhooks.EntityFrameworkCore;
 
 /// <summary>
-/// A durable <see cref="IEndpointStore"/> backed by EF Core / SQLite. Upsert is a single atomic
-/// <c>INSERT … ON CONFLICT (id) DO UPDATE</c>; reads use EF LINQ queries with <c>AsNoTracking</c>.
-/// A fresh context is taken per operation — DbContext is not thread-safe and must not be shared.
+/// A durable <see cref="IEndpointStore"/> backed by EF Core (SQLite or Postgres). Upsert is a single atomic
+/// <c>INSERT … ON CONFLICT (id) DO UPDATE</c> — valid on both providers — with <c>@</c>-prefixed parameters,
+/// which Npgsql and Microsoft.Data.Sqlite both accept (Npgsql does not recognise SQLite's <c>$</c> prefix).
+/// Reads use EF LINQ queries with <c>AsNoTracking</c>. A fresh context is taken per operation — DbContext is
+/// not thread-safe and must not be shared.
 /// </summary>
 internal sealed class EfEndpointStore : IEndpointStore
 {
@@ -34,7 +36,7 @@ internal sealed class EfEndpointStore : IEndpointStore
         command.CommandText =
             """
             INSERT INTO endpoints (id, tenant_key, url, secret, subscribed_event_types, enabled, description)
-            VALUES ($id, $tenant_key, $url, $secret, $subscribed_event_types, $enabled, $description)
+            VALUES (@id, @tenant_key, @url, @secret, @subscribed_event_types, @enabled, @description)
             ON CONFLICT (id) DO UPDATE SET
                 tenant_key            = excluded.tenant_key,
                 url                   = excluded.url,
@@ -49,13 +51,13 @@ internal sealed class EfEndpointStore : IEndpointStore
             ? null
             : JsonSerializer.Serialize(endpoint.EventTypes, JsonSerializerOptions.Default);
 
-        AddParameter(command, "$id", endpoint.Id);
-        AddParameter(command, "$tenant_key", endpoint.TenantKey);
-        AddParameter(command, "$url", endpoint.Url);
-        AddParameter(command, "$secret", endpoint.Secret);
-        AddParameter(command, "$subscribed_event_types", eventTypesJson);
-        AddParameter(command, "$enabled", endpoint.Enabled);
-        AddParameter(command, "$description", endpoint.Description);
+        AddParameter(command, "@id", endpoint.Id);
+        AddParameter(command, "@tenant_key", endpoint.TenantKey);
+        AddParameter(command, "@url", endpoint.Url);
+        AddParameter(command, "@secret", endpoint.Secret);
+        AddParameter(command, "@subscribed_event_types", eventTypesJson);
+        AddParameter(command, "@enabled", endpoint.Enabled);
+        AddParameter(command, "@description", endpoint.Description);
 
         await command.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }

@@ -17,14 +17,15 @@
     Runtime dependencies (pinned to the net8 floor; net10 consumers unify upward).
     DependencyInjection.Abstractions is 8.0.2 — the real floor the graph already requires
     (Microsoft.Extensions.Http 8.0.0 -> Logging 8.0.1 -> *.Abstractions >= 8.0.2). Logging.Abstractions
-    is 8.0.3: the Testcontainers integration-test dependency requires >= 8.0.3, and transitive pinning
-    forces every consumer to match (still 8.0.x / the net8 LTS line). The core project references these
-    directly (authoritative); provider/test projects pull them transitively and need the pins to match
-    or transitive pinning trips NU1109.
+    is 8.0.3: the Testcontainers integration-test dependency requires >= 8.0.3. Hosting.Abstractions is
+    8.0.1: Microsoft.AspNetCore.Mvc.Testing 8.0.11 (the WebhookSink smoke-test host) pulls Hosting 8.0.1
+    -> Hosting.Abstractions >= 8.0.1. All still 8.0.x / the net8 LTS line, and transitive pinning forces
+    every consumer to match. The core project references these directly (authoritative); provider/test
+    projects pull them transitively and need the pins to match or transitive pinning trips NU1109.
   -->
   <ItemGroup>
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="8.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.3" />
   </ItemGroup>

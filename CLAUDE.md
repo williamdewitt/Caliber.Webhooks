@@ -27,7 +27,7 @@ The in-CI `@claude` agent ([`claude.yml`](.github/workflows/claude.yml)) runs un
 
 The kit is opinionated, and several defaults collide with decisions already bedded down in `docs/design/`. Where they collide, **ours win** — do not let a kit rule or skill silently override:
 
-- **Packages →** Central Package Management (`Directory.Packages.props`), pinned + deterministic. NOT the kit's "`dotnet add` without `--version`".
+- **Packages →** Central Package Management (`Directory.Packages.props`), pinned + deterministic. NOT the kit's "`dotnet add` without `--version`". **Pin to the net8 LTS floor:** the library multi-targets net8+net10, so `Microsoft.Extensions.*` and any package that drags them transitively — incl. test deps like **`Microsoft.AspNetCore.Mvc.Testing`** — use the **`8.0.x`** line, never `10.x`. A `10.x` package pulls `Microsoft.Extensions.*.Abstractions ≥ 10.x`, which **downgrade-conflicts (NU1109)** against the net8 pins under transitive pinning and fails restore. New test/sample projects (even net10-only ones) must pin their deps to `8.0.x` to unify; if a genuinely net10-only dependency is unavoidable, that's a deliberate floor decision for a human, not an autonomous bump.
 - **Architecture →** iDesign volatility-based decomposition (use the kit's `idesign` skill). NOT its VSA / Clean-Architecture default (`architecture-advisor`, ADR-001).
 - **Zero-infra ethos →** in-memory + SQLite providers are a *feature*, not a smell. Ignore the kit's "no InMemory DB" testing rule for consumer-facing guidance.
 - **Errors →** case-by-case (exceptions + fail-fast options validation, #5). NOT a blanket Result-pattern rule.

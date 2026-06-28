@@ -65,6 +65,9 @@
     <PackageVersion Include="xunit.v3" Version="3.2.2" />
     <PackageVersion Include="AwesomeAssertions" Version="9.4.0" />
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.7.0" />
+    <!-- In-process test host for the WebhookSink sample (net10.0 only). Drives
+         WebApplicationFactory<Program> for the /healthz smoke test. -->
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.6" />
     <!-- Spins a real Postgres in Docker to prove cross-instance no-double-send (FOR UPDATE SKIP LOCKED).
          Used only by Caliber.Webhooks.IntegrationTests, which skips itself unless CALIBER_INTEGRATION=1
          (set by the dedicated CI integration job); Docker is never spun on the fast PR path. -->

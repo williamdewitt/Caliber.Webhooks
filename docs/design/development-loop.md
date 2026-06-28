@@ -5,7 +5,7 @@ status: pre-release
 audience: [human, ai]
 tags: [caliber-webhooks, github, ci, automation, governance, autonomy, process]
 related: [./roadmap.md, ./decisions.md]
-updated: 2026-06-24
+updated: 2026-06-28
 ---
 
 # The Self-Building Development Loop
@@ -39,7 +39,7 @@ One classification → gate + model + effort:
 | Risk band | Triggered by | Model | Effort | Merge gate |
 |---|---|---|---|---|
 | **Trivial** | `docs/**`, `**/*.md`, formatting, Dependabot **patch** | none → **Haiku 4.5** (`claude-haiku-4-5`) | minimal | auto-merge on green, no human |
-| **Low** | `tests/**`, `samples/**` (not core) | **Sonnet 4.6** (`claude-sonnet-4-6`) | medium | CI green + light approval |
+| **Low** | `tests/**`, `samples/**` (not core) | **Sonnet 4.6** (`claude-sonnet-4-6`) | medium | CI green + light approval — except `samples/**`-only, which **auto-merges** (#52) |
 | **Core** | `src/Caliber.Webhooks/**`, `.github/workflows/**` | **Opus 4.8** (`claude-opus-4-8`) | high | CODEOWNERS human approval |
 | **Critical** | SSRF/signing/secret-at-rest, `PublicAPI.*.txt`, `Migrations/**` | **Opus 4.8** | max | human approval **+** linked design update |
 
@@ -59,7 +59,7 @@ Two principles fall out of this table:
 1. **CODEOWNERS** maps protected paths (`src/**`, security files, `PublicAPI.*.txt`, `.github/workflows/**`) to a human → those paths cannot merge without human review. Workflow definitions are owned because they control CI privileges and secret access.
 2. **Branch protection / rulesets** on `main`: require PR, require CI status checks green, require approvals (+ CODEOWNERS review on protected paths).
 3. **Path-classifier workflow** labels each PR `risk:trivial|low|core|critical`.
-4. **Native auto-merge** is enabled by a workflow *only* when a PR is `risk:trivial` and CI is green.
+4. **Native auto-merge** is enabled by a workflow when a PR is `risk:trivial` and CI is green, **or** when it is `risk:low` and **every** changed path is under `samples/**` ([#52](https://github.com/williamdewitt/Caliber.Webhooks/issues/52)) — a deliberate downward relaxation so the WebhookSink slices build unattended. The path-confinement check fails closed: any `src/**`, workflow, migration, `PublicAPI.*.txt`, or even `docs/**` path keeps the human gate. `tests/**`/`benchmarks/**` `risk:low` PRs stay human-gated.
 
 First dogfood: **Dependabot patch auto-merge** exercises the whole *classify → CI green → auto-merge* path before the agent is ever pointed at it.
 
@@ -72,7 +72,13 @@ Green tests prove the code does what the tests check; two further gates probe wh
 
 ## Work selection — which issue, next
 
-"Ready" is an explicit state, not a guess. A dispatch step (scheduled or manually triggered) picks the top issue that is: in the current milestone, labeled `ready` (has acceptance criteria + definition-of-done), unblocked, highest priority. It then invokes the agent with the model + effort mapped from the issue's `risk:*` band. North-star mode is the same machinery with an epic decomposed into ready issues first.
+"Ready" is an explicit state, not a guess. The scheduled dispatcher ([`dispatch.yml`](../../.github/workflows/dispatch.yml), [#51](https://github.com/williamdewitt/Caliber.Webhooks/issues/51)) runs on a cron (plus `workflow_dispatch` with a `dry_run` input) and picks **exactly one** issue per run: open, labelled **`ready` and `agent`**, **unblocked** (no `blocked` label and every `Blocked by #N` referenced issue is closed), highest `priority:*`, oldest as tiebreak. It then triggers the agent by posting the `@claude` mention — the event [`claude.yml`](../../.github/workflows/claude.yml) already listens for — which routes the issue's `risk:*` band → model. North-star mode is the same machinery with an epic decomposed into `ready`+`agent` issues first (e.g. WebhookSink `S1…S6` as a `Blocked by` chain, advanced one slice per merge).
+
+Three properties keep it safe and affordable:
+
+- **Posted as `AGENT_PAT`, never `GITHUB_TOKEN`.** A `GITHUB_TOKEN` comment is suppressed from triggering workflows and would not clear `claude.yml`'s trusted-actor guard; the PAT is the maintainer's identity, so the mention both fires the run and passes the guard. (The PAT needs `Issues:RW` for this, alongside the `contents`/`pull-requests` it already uses to open PRs.)
+- **No double-trigger.** A candidate is skipped if a `claude/issue-<n>-*` branch or an open agent PR exists for it, and the whole dispatch no-ops while any `claude.yml` run is in flight.
+- **Cost is gate control.** The in-CI agent draws on the shared Claude subscription quota ([economics](#the-agent--its-economics)), so the dispatcher caps **agent runs per day** (the `DISPATCH_MAX_PER_DAY` repo variable, default 4) and its cron is weighted to the maintainer's off-hours. Lower the cap or trim the cron to spend less.
 
 ## The agent & its economics
 

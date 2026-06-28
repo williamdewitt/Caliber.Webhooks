@@ -2,8 +2,10 @@ name: Classify & auto-merge
 
 # The deterministic spine. Every PR is classified into exactly one risk:* band by
 # its changed paths (no model, free, reliable). That single label is the source of
-# truth the merge gate reads. If the band is trivial, native auto-merge is enabled
-# so the PR merges itself once CI is green.
+# truth the merge gate reads. Native auto-merge is enabled so the PR merges itself
+# once CI is green when the band is trivial, OR when it is low and confined entirely
+# to samples/** (the deliberate downward relaxation, #52, that lets the WebhookSink
+# slices build unattended).
 #
 # Precedence (highest blast radius wins): critical > core > low > trivial.
 #   critical = public API surface, EF migrations, or security-sensitive source
@@ -70,6 +72,10 @@ jobs:
             // is actor-gated (trusted bot, patch only), not path-gated.
             const isWorkflow = paths.some(p => p.startsWith('.github/workflows/'));
             const isLow = paths.some(p => p.startsWith('tests/') || p.startsWith('samples/') || p.startsWith('benchmarks/'));
+            // Fail-closed gate for the samples-only auto-merge relaxation (#52): true only when EVERY
+            // changed path is under samples/**. Any src/**, workflow, migration, PublicAPI, or even docs/**
+            // path makes this false (and usually bumps the band above 'low'), so a mixed PR never auto-merges.
+            const allSamples = paths.length > 0 && paths.every(p => p.startsWith('samples/'));
             const allTrivial = paths.length > 0 && paths.every(p =>
               p.startsWith('docs/') ||
               (p.startsWith('.github/') && !p.startsWith('.github/workflows/')) ||
@@ -104,8 +110,14 @@ jobs:
               .addRaw(`Classified PR #${pr.number} from ${paths.length} changed path(s).`)
               .write();
 
-            // Trivial PRs earn native auto-merge: merge on green, no human.
-            if (band === 'trivial' && !pr.draft) {
+            // Native auto-merge (merge on green, no human) is earned by:
+            //   * any 'trivial' PR (docs / config), OR
+            //   * a 'low' PR confined entirely to samples/** — the deliberate downward
+            //     autonomy relaxation (#52) that lets the WebhookSink slices build unattended.
+            // tests/** and benchmarks/** 'low' PRs stay human-gated; src/**, workflows, and all
+            // protected paths are 'core'/'critical' and never reach this branch.
+            const autoMerge = !pr.draft && (band === 'trivial' || (band === 'low' && allSamples));
+            if (autoMerge) {
               try {
                 await github.graphql(
                   `mutation($id: ID!) {
@@ -115,7 +127,8 @@ jobs:
                    }`,
                   { id: pr.node_id },
                 );
-                core.notice(`Auto-merge enabled for trivial PR #${pr.number}.`);
+                const why = band === 'trivial' ? 'trivial' : 'samples-only low';
+                core.notice(`Auto-merge enabled for ${why} PR #${pr.number}.`);
               } catch (e) {
                 // Expected until branch protection requires checks (e.g. while the
                 // repo is private on a plan without rulesets). Harmless.

@@ -1,0 +1,138 @@
+name: Dispatch (auto-advance the loop)
+
+# Layer-4 scheduler (#51). On a cron it picks the single best ready+agent issue and
+# triggers the agent on it by posting the @claude mention — the same event claude.yml
+# listens for. One issue per run; guards prevent double-triggering and a daily cap
+# protects the Claude-subscription budget the agent draws on. See
+# docs/design/development-loop.md (Work selection — which issue, next).
+#
+# Why the comment is posted with AGENT_PAT, never GITHUB_TOKEN: a GITHUB_TOKEN comment
+# (a) is suppressed by GitHub from triggering further workflows, and (b) would not pass
+# claude.yml's trusted-actor guard (author_association). AGENT_PAT is the maintainer's
+# identity (OWNER), so the mention both fires the workflow and clears the guard. The
+# PAT needs Issues:read+write in addition to contents/pull-requests.
+#
+# Cadence: moderate, weighted to the maintainer's off-hours (SAST, UTC+2). The
+# DISPATCH_MAX_PER_DAY repo variable (default 4) caps total agent runs/day; lower it,
+# or trim the daytime cron lines, to spend less of the subscription.
+
+on:
+  schedule:
+    - cron: "0 22 * * *" # 00:00 SAST
+    - cron: "0 1 * * *"  # 03:00 SAST
+    - cron: "0 4 * * *"  # 06:00 SAST
+    - cron: "0 10 * * *" # 12:00 SAST
+    - cron: "0 14 * * *" # 16:00 SAST
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Select and log the next issue, but post nothing"
+        type: boolean
+        default: false
+
+# Least privilege: the workflow token only reads (issues, branches, PRs, runs). The
+# trigger comment is posted by AGENT_PAT in a later step, so the token needs no write.
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+  actions: read
+
+# One dispatch at a time.
+concurrency:
+  group: dispatch
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Select the next ready+agent issue
+        id: select
+        uses: actions/github-script@v9
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+          MAX_PER_DAY: ${{ vars.DISPATCH_MAX_PER_DAY || '4' }}
+        with:
+          script: |
+            const DRY_RUN = process.env.DRY_RUN === 'true';
+            const MAX_PER_DAY = parseInt(process.env.MAX_PER_DAY || '4', 10);
+            const { owner, repo } = context.repo;
+
+            // --- Budget + in-flight guard: inspect today's claude.yml runs ---
+            const since = new Date(); since.setUTCHours(0, 0, 0, 0);
+            let runsToday = 0, inFlight = false;
+            try {
+              const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+                owner, repo, workflow_id: 'claude.yml', per_page: 100,
+                created: `>=${since.toISOString().slice(0, 10)}`,
+              });
+              runsToday = runs.length;
+              inFlight = runs.some(r => r.status === 'in_progress' || r.status === 'queued');
+            } catch (e) {
+              core.warning(`Could not read claude.yml runs: ${e.message}`);
+            }
+            if (inFlight) { core.notice('An agent run is in flight — skipping this dispatch.'); return; }
+            if (runsToday >= MAX_PER_DAY) {
+              core.notice(`Daily cap reached (${runsToday}/${MAX_PER_DAY}) — skipping.`); return;
+            }
+
+            // --- Candidates: open issues labelled ready AND agent (listForRepo AND-matches) ---
+            const raw = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: 'open', labels: 'ready,agent', per_page: 100,
+            });
+            const candidates = raw.filter(i => !i.pull_request); // listForRepo includes PRs
+
+            const PRI = { 'priority:p0': 0, 'priority:p1': 1, 'priority:p2': 2, 'priority:p3': 3 };
+            const names = i => i.labels.map(l => (typeof l === 'string' ? l : l.name));
+            const rankOf = i => Math.min(9, ...names(i).map(n => PRI[n] ?? 9));
+
+            // A 'blocked' label, or any open "Blocked by #N" referenced in the body, blocks the issue.
+            async function isBlocked(i) {
+              if (names(i).includes('blocked')) return true;
+              const refs = [...(i.body || '').matchAll(/blocked by #(\d+)/gi)].map(m => +m[1]);
+              for (const n of refs) {
+                try {
+                  const { data: dep } = await github.rest.issues.get({ owner, repo, issue_number: n });
+                  if (dep.state === 'open') return true;
+                } catch { /* dangling ref → not a blocker */ }
+              }
+              return false;
+            }
+
+            // Work already in flight for an issue: an agent branch or an open PR for it.
+            const branches = await github.paginate(github.rest.repos.listBranches, { owner, repo, per_page: 100 });
+            const openPRs = await github.paginate(github.rest.pulls.list, { owner, repo, state: 'open', per_page: 100 });
+            const hasWork = n => {
+              const pfx = `claude/issue-${n}-`;
+              return branches.some(b => b.name.startsWith(pfx)) || openPRs.some(p => p.head.ref.startsWith(pfx));
+            };
+
+            candidates.sort((a, b) => rankOf(a) - rankOf(b) || a.number - b.number);
+
+            let chosen = null;
+            for (const i of candidates) {
+              if (await isBlocked(i)) continue;
+              if (hasWork(i.number)) continue;
+              chosen = i; break;
+            }
+            if (!chosen) { core.notice('Nothing to dispatch: no unblocked ready+agent issue without work in flight.'); return; }
+
+            core.notice(`Chosen #${chosen.number}: ${chosen.title} — runs today ${runsToday}/${MAX_PER_DAY}.`);
+            core.setOutput('chosen', String(chosen.number));
+            if (DRY_RUN) { core.notice('dry_run: selected only, posting nothing.'); return; }
+            core.setOutput('post', 'true');
+
+      - name: Trigger the agent (@claude, as AGENT_PAT)
+        if: steps.select.outputs.post == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_PAT }}
+          REPO: ${{ github.repository }}
+          ISSUE: ${{ steps.select.outputs.chosen }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "No AGENT_PAT secret — cannot post the trigger comment (a GITHUB_TOKEN comment would not fire claude.yml)."
+            exit 1
+          fi
+          gh issue comment "$ISSUE" --repo "$REPO" --body "@claude please pick up this issue and implement it strictly per its **Acceptance criteria** and **Definition of done**, then open a PR that closes it. Auto-dispatched by the self-building loop."
+          echo "Triggered @claude on #$ISSUE."

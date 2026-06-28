@@ -67,7 +67,11 @@ jobs:
                 owner, repo, workflow_id: 'claude.yml', per_page: 100,
                 created: `>=${since.toISOString().slice(0, 10)}`,
               });
-              runsToday = runs.length;
+              // Count only runs where the agent ACTUALLY executed. claude.yml fires on every
+              // issue/comment/PR-review event and its in-job guard skips when there's no @claude —
+              // those 'skipped' runs spend zero model budget, so they must not count against the cap
+              // (otherwise routine issue/comment activity exhausts it without any agent work).
+              runsToday = runs.filter(r => r.conclusion !== 'skipped').length;
               inFlight = runs.some(r => r.status === 'in_progress' || r.status === 'queued');
             } catch (e) {
               core.warning(`Could not read claude.yml runs: ${e.message}`);

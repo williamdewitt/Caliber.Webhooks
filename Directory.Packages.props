@@ -9,7 +9,7 @@
   <ItemGroup>
     <PackageVersion Include="MinVer" Version="7.0.0" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.300" />
-    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.111" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.117" />
     <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.4" />
   </ItemGroup>
 
@@ -26,7 +26,7 @@
   <ItemGroup>
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
-    <PackageVersion Include="Microsoft.Extensions.Http" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="8.0.1" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.3" />
   </ItemGroup>
 
@@ -71,7 +71,7 @@
          floor (house CPM policy): the 8.0.x line's transitive Microsoft.Extensions.*.Abstractions
          unify with the runtime pins above, whereas the 10.x line drags those abstractions to 10.x
          and downgrade-conflicts (NU1109) against the 8.0.x pins under transitive pinning. -->
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.11" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.28" />
     <!-- Spins a real Postgres in Docker to prove cross-instance no-double-send (FOR UPDATE SKIP LOCKED).
          Used only by Caliber.Webhooks.IntegrationTests, which skips itself unless CALIBER_INTEGRATION=1
          (set by the dedicated CI integration job); Docker is never spun on the fast PR path. -->

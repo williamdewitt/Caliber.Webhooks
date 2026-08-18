@@ -63,7 +63,7 @@
        Microsoft.NET.Test.Sdk / VSTest adapter is needed. This is what unblocks Stryker's
        MTP runner (Stryker cannot drive xUnit v3 under VSTest). -->
   <ItemGroup>
-    <PackageVersion Include="xunit.v3" Version="3.2.2" />
+    <PackageVersion Include="xunit.v3" Version="4.0.0" />
     <PackageVersion Include="AwesomeAssertions" Version="9.4.0" />
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.7.0" />
     <!-- In-process test host for the WebhookSink sample (net10.0 only). Drives
